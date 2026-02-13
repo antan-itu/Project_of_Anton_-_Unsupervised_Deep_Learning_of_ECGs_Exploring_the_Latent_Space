@@ -1,15 +1,13 @@
 import os
 import csv
-from tqdm import tqdm
 
 def delete_flagged_files():
     # --- CONFIGURATION ---
     # Path to the folder containing your ECG files
-    # target_folder = r"C:\Users\anton\Downloads\MIMIC_IV_ECG_CSV_MICROVOLTS_v3\MIMIC_IV_ECG_CSV_MICROVOLTS_v3\files"
-    files_directory = r"C:\Users\anton\Downloads\Test"
+    files_directory = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/Data/MIMIC-IV_Subset/Test"
 
     # Path to the log file we created in the previous step
-    log_file_path = "ecg_consistency_log.csv"
+    log_file_path = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/Consistency Checker/ecg_consistency_log.csv"
 
     # SAFETY: Set this to False to actually delete files
     # True = Simulate deletion
@@ -54,13 +52,15 @@ def delete_flagged_files():
 
     print(f"Starting deletion (Mode: {'DRY RUN / SIMULATION' if DRY_RUN else 'LIVE / DESTRUCTIVE'})...")
 
-    for file_name in tqdm(files_to_delete, unit="file"):
+    # Replaced tqdm with enumerate for manual progress tracking
+    for i, file_name in enumerate(files_to_delete):
         full_path = os.path.join(files_directory, file_name)
 
         try:
             if os.path.exists(full_path):
                 if not DRY_RUN:
                     os.remove(full_path)  # The actual deletion happens here
+                
                 deleted_count += 1
             else:
                 # File already gone or path incorrect
@@ -70,13 +70,17 @@ def delete_flagged_files():
             if not DRY_RUN:
                 print(f"Could not delete {file_name}: {e}")
             errors += 1
+        
+        # Simple progress update every 100 files
+        if (i + 1) % 100 == 0 or (i + 1) == count:
+            print(f"Processed {i + 1}/{count} files...", end='\r')
 
     # 4. Status Report
-    print("-" * 30)
+    print("\n" + "-" * 30)
     if DRY_RUN:
         print(f"--- DRY RUN COMPLETE ---")
         print(f"The script WOULD have deleted: {deleted_count} files.")
-        print(f"To perform actual deletion to: DRY_RUN = False")
+        print(f"To perform actual deletion set: DRY_RUN = False")
     else:
         print(f"--- DELETION COMPLETE ---")
         print(f"Successfully deleted: {deleted_count} files.")

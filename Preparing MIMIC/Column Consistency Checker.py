@@ -2,8 +2,6 @@ import os
 import csv
 import multiprocessing
 from multiprocessing import Pool, cpu_count
-from tqdm import tqdm
-
 
 def process_file(file_path):
     try:
@@ -39,6 +37,12 @@ def process_file(file_path):
         if row_count == 0:
             return (file_name, "0; 0", "NO")
 
+        # Handle case where min_empty was never updated (e.g. loops ran but logic didn't hit)
+        if min_empty == float('inf'):
+            min_empty = 0
+        if max_empty == -1:
+            max_empty = 0
+
         # Format Empty Cells Range
         empty_range_str = f"{min_empty}; {max_empty}"
 
@@ -53,12 +57,16 @@ def process_file(file_path):
 
 def main():
     # --- CONFIGURATION ---
-    # target_folder = r"C:\Users\anton\Downloads\MIMIC_IV_ECG_CSV_MICROVOLTS_v3\MIMIC_IV_ECG_CSV_MICROVOLTS_v3\files"
-    target_folder = r"C:\Users\anton\Downloads\Test"
-    log_output = "ecg_consistency_log.csv"
+    target_folder = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub Repository/" \
+                    "Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/Data/MIMIC-IV_Subset/Test"
+    
+    log_output = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/Consistency Checker/ecg_consistency_log.csv"
+
     # 1. Collect all file paths
     all_files = []
     print(f"Scanning directory: {target_folder}...")
+    
+    # Using os.walk to find files recursively
     for root, _, files in os.walk(target_folder):
         for file in files:
             if file.lower().endswith('.csv'):
@@ -76,8 +84,14 @@ def main():
             # chunksize=50 helps keep the CPU fed with work
             results = pool.imap_unordered(process_file, all_files, chunksize=50)
 
-            for result in tqdm(results, total=total_files, unit="file"):
+            count = 0
+            for result in results:
                 writer.writerow(result)
+                count += 1
+                
+                # Simple progress update every 100 files
+                if count % 100 == 0 or count == total_files:
+                    print(f"Processed {count}/{total_files} files...", end='\r')
 
     print(f"\nProcessing complete. Log saved to: {log_output}")
 

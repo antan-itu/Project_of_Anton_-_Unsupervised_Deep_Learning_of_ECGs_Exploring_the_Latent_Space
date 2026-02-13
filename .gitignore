@@ -1,2 +1,3 @@
-/Model Development/ecg.tfrecord
-/Consistency Checker/ecg_consistency_log.csv
+/Data
+/Preparing MIMIC/ecg_consistency_log.csv
+/venv
