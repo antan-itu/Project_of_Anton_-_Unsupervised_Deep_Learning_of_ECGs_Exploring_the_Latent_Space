@@ -1,8 +1,62 @@
 # Anton's Weekly Meetings
 
+* [19 February 2026](#date-19-february-2026)
 * [05 February 2026](#date-05-february-2026)
 * [Template](#date-template)
 
+---
+### Date: 19 February 2026
+
+#### Who did you help this week?
+
+* N/A 
+
+#### What helped you this week?
+
+* Being at the KU office and getting help from Jonas and Jørgen to set up access to the server for training the models.
+* Daily discussions about the results with Jørgen.
+* Feedback from this week's supervision, which provided a lot of guidance for future work.
+
+#### What did you achieve?
+
+Previous weeks todo list:
+* Called SAP and registered supervisors.
+* Set up the GitHub repository and Overleaf Project with matching titles.
+* Wrote the Problem Statement and got it approved.
+* Reviewed the guidelines for writing in preparation for the Overleaf document.
+* Checked the consistency of the ECG files and created a log-file.
+
+Other achievements:
+* Built a basic CNN-autoencoder and tested it on 5,000 and 800,000 ECGs.
+* Completed 16 runs with 5,000 ECGs - the model prefers higher dimensionality and larger filters.
+
+#### What did you struggle with?
+
+* The model crashed when training on the full dataset - this is hopefully solved by lowering the batch size to 128.
+* The loss curve looks "too good," Veronica suggests a side experiment to determine how few cases are too few.
+* Needed clarification on how to structure flowcharts for methods and inclusion/exclusion criteria.
+
+#### What would you like to work on next week?
+
+* Continue the Literature Review using tools like Lens, PubMed, and OpenAlex.
+* Implement cross-validation - An 80/20 split on 5,000 ECGs can give misleadingly results, since the model can recieve a "easy" or noisy batch. Cross‑validation averages across many splits, making it possible to check if the models are significantly different.
+* Experiment with different hyperparameters using ([RandomizedSearchCV](https://medium.com/@bhagyarana80/tuning-hyperparameters-like-a-pro-with-gridsearchcv-and-randomizedsearchcv-611565c0e551)), testing higher dimensionality, kernels, filters, pooling, dropout rates, and strides.
+* Add labels to the UMAP projection by updating the metadata without rerunning the UMAP.
+* Establish the hold out set of 150,000 ECGs using stratification to maintain similar distributions across age groups and gender.
+* Draft flowcharts for the methods and inclusion/exclusion criteria, referencing the ([PRISMA-Statement](https://www.prisma-statement.org/)).
+
+#### Where do you need help from Veronika?
+
+* Feedback on my work once I've implemented cross-validation, RandomizedSearchCV, and added labels to the UMAP.
+* Discussing and getting feedback on the flowcharts for the methods and the inclusion/exclusion criteria.
+* Discussing existing papers to include in the Literature Review.
+* Guidance on stratifying the 150,000 ECG hold-out dataset.
+
+#### Any other topics
+
+* N/A
+
+---
 
 ### Date: 05 February 2026
 
@@ -71,6 +125,8 @@ The meeting with Jørgen and Veronika helped clarify the direction for the proje
 * Availability: I have a 15-hour side job to balance with the thesis.
 
 * Vacation: I have 2 weeks of vacation planned for March.
+
+---
 
 ### Date: [Template]
 
