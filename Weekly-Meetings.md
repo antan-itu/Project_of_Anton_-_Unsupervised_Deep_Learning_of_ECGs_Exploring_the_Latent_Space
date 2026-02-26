@@ -1,8 +1,58 @@
 # Anton's Weekly Meetings
 
+* [26 February 2026](#date-26-february-2026)
 * [19 February 2026](#date-19-february-2026)
 * [05 February 2026](#date-05-february-2026)
 * [Template](#date-template)
+
+---
+
+### Date: 26 February 2026
+
+#### Who did you help this week?
+
+* I helped Jørgen prepare the MIMIC-IV dataset for the MUSE database.
+
+#### What helped you this week?
+
+* Converting the script from TensorFlow to PyTorch improved GPU compatibility and training performance.
+* Using Optuna instead of RandomizedSearchCV. Optuna is based on Bayesian optimization (TPE algorithm) - effective at exploring parameter combinations and pruning poor-performing models.
+
+#### What did you achieve?
+
+* Implemented cross-validation.
+* Experimented with the agreed hyperparameters using Optuna.
+* Completed the "How few cases are too few?" side experiment to investigate the "too good" loss curves:
+  * Used a fixed validation set of 1,000 ECGs.
+  * The model performance starts noticeably decreasing around ~2,000 ECGs. 
+* Literature Review: Extracted interesting articles using Lens, explored literature visualizations, and updated the Overleaf document.
+* Drafted the initial flowcharts.
+
+#### What did you struggle with?
+
+* Dataset Labels - waiting for the MIMIC-IV diagnostic labels (Jørgen is working on a solution). This delays adding labels to the UMAP projection and stratifying the 150,000 ECG holdout set.
+* Struggled with GPU compatibility, requiring a lot of work to convert the entire model architecture to PyTorch.
+
+
+#### What would you like to work on next week?
+
+* Run the model on the full dataset using a large batch size. I will test hyperparameters from Optuna Trial 138 and Trial 54 due to their more stable learning curves.
+* Create a completely random 150,000 ECG holdout set until I get the clinical labels (approved by Veronika, we will check the distributions later and re-stratify if necessary).
+* Visualize the parameters using plots (and maybe heatmaps) to identify patterns among the top 10%, 20% etc. best-performing models from the Optuna CSV.
+* Investigate and write an explanation for why the learning curves look "weird" for trials 125, 149, and 108.
+* Add the"How few cases are too few?" plot to Overleaf 
+* Revise the flowchart with cross-lane arrows.
+* Re-read the Lab Guide.
+
+#### Where do you need help from Veronika?
+
+* Feedback on the hyperparameter pattern visualizations once I have generated them based on her drawings.
+* Reviewing the updated flowchart once the swimlane arrows are added.
+
+#### Any other topics
+
+* Meeting Schedule, we agreed to skip the second meeting scheduled for next Thursday.
+* Meeting Structure, discussed suggestions for agenda structure and formatting for future meetings. I'm going to use this template.
 
 ---
 ### Date: 19 February 2026

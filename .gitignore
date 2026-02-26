@@ -1,5 +1,12 @@
 /Data
 /Preparing MIMIC/ecg_consistency_log.csv
+/Preparing MIMIC/ecg_filled_log.csv
 /venv
+/.venv
+/venv_ecg
+/venv_mf3
+/~
 /Train in background.md
 /Model Development/GridSearch
+/Model Development/HowMuchDataIsEnough
+/Model Development/Optuna
