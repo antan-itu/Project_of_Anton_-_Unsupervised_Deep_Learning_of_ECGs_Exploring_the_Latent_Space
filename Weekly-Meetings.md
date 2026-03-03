@@ -6,6 +6,57 @@
 * [Template](#date-template)
 
 ---
+### Date: 05 March 2026
+
+#### Who did you help this week?
+
+* N/A
+
+#### What helped you this week?
+
+* The hyperparameter visualizations revealed new patterns and validated the ones I already expected.
+
+#### What did you achieve?
+
+* Defined the full dataset splits:
+  * Training Set: 489,481 ECGs
+  * Validation Set: 150,000 ECGs
+  * Holdout Set: 150,000 ECGs
+* Trained model on the full dataset using different batch sizes, experimenting with the most successful parameters from the top Optuna trials.
+* Visualized the hyperparameters to find and confirm architectural patterns. 
+* Read the Lab Guide again
+* Updated flowchart. 
+* Investigated the "weird" learning curves in trials 125, 149, and 108: The latent space was large enough to memorize the small training set, resulting in an overfitting gap between training and validation loss. Increasing to the full dataset size forces the model to generalize, solving the problem. 
+* Created `Notes.tex` in Overleaf for the final report, containing plots and other relevant information, such as the side experiment (how few cases are too few).
+
+#### What did you struggle with?
+
+* I've got the ground truth labels and preparing them for overlay on the UMAP
+
+#### What would you like to work on next week?
+
+* Finish cleaning the atrial fibrillation labels 
+  * Add the labels to the UMAP projection.
+* Brainstorm and formalize ideas for the next set of experiments.
+* Add hyperparameter visualizations to the `Notes.tex` document? For the 10K experiments and for the full dataset?
+
+#### Where do you need help from Veronika?
+
+* Discussion of the hyperparameter visualizations.
+* Reviewing the updated flowchart.
+* Discussing the latest results from the full dataset training runs.
+
+#### Any other topics
+
+* **Hyperparameter visualizations - 10K ECGs**
+![Alt text](weekly_meetings_material/2026-03-05/03_Slice_Plots.png "Slice Plots")
+![Alt text](weekly_meetings_material/2026-03-05/06_Stacked_Quantile_Distributions.png "Stacked bar chart")
+
+* **Flowchart**
+![Alt text](weekly_meetings_material/2026-03-05/Flowchart.png "Flowchart")
+
+
+---
 
 ### Date: 26 February 2026
 
