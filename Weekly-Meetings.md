@@ -37,7 +37,7 @@
 
 * Finish cleaning the atrial fibrillation labels 
   * Add the labels to the UMAP projection.
-* Brainstorm and formalize ideas for the next set of experiments.
+* Brainstorm ideas for the next set of experiments.
 * Add hyperparameter visualizations to the `Notes.tex` document? For the 10K experiments and for the full dataset?
 
 #### Where do you need help from Veronika?
