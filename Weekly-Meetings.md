@@ -1,5 +1,6 @@
 # Anton's Weekly Meetings
 
+* [05 March 2026](#date-05-march-2026)
 * [26 February 2026](#date-26-february-2026)
 * [19 February 2026](#date-19-february-2026)
 * [05 February 2026](#date-05-february-2026)
