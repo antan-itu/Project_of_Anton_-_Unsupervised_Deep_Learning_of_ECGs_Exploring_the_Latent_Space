@@ -36,9 +36,9 @@
 
 #### What would you like to work on next week?
 
-* Clean more labels
-* UMAP Projection
-  * Experiment with different parameters
+* Continue cleaning the labels.
+* UMAP Projection.
+  * Experiment with different parameters.
   * Add more labels to the UMAP projection.
 * Brainstorm ideas for the next set of experiments.
 * Add hyperparameter visualizations to the `Notes.tex` document? For the 10K experiments and for the full dataset?
