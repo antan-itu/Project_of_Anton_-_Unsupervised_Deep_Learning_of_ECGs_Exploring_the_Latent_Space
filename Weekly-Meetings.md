@@ -23,16 +23,16 @@
   * Training Set: 511,585 ECGs
   * Validation Set: 127,896 ECGs
   * Holdout Set: 150,000 ECGs
-* Trained model on the full dataset using different batch sizes, experimenting with the most successful parameters from the top Optuna trials.
+* Trained model on the full dataset using different batch sizes, experimenting with the best parameters from the top Optuna trials.
 * Visualized the hyperparameters to find and confirm architectural patterns. 
-* Read the Lab Guide again
+* Read the Lab Guide again.
 * Updated flowchart. 
 * Investigated the "weird" learning curves in trials 125, 149, and 108: The latent space was large enough to memorize the small training set, resulting in an overfitting gap between training and validation loss. Increasing to the full dataset size forces the model to generalize, solving the problem. 
 * Created `Notes.tex` in Overleaf for the final report, containing plots and other relevant information, such as the side experiment (how few cases are too few).
 
 #### What did you struggle with?
 
-* I've got the ground truth labels and preparing them for overlay on the UMAP
+* Getting the ground truth labels and overlaying them on the UMAP-Projection.
 
 #### What would you like to work on next week?
 
@@ -41,7 +41,7 @@
   * Experiment with different parameters.
   * Add more labels to the UMAP projection.
 * Brainstorm ideas for the next set of experiments.
-* Add hyperparameter visualizations to the `Notes.tex` document? For the 10K experiments and for the full dataset?
+* Create hyperparameter visualizations for the full model.
 
 #### Where do you need help from Veronika?
 
@@ -70,7 +70,7 @@
 
 ![Alt text](weekly_meetings_material/2026-03-05/AFib_umap_2d_n500.png "UMAP")
 
-  * [AFib UMAP 3D (n=50)](weekly_meetings_material/2026-03-05/AFib_umap_3d_n500.html)
+  * [AFib UMAP 3D (n=500)](weekly_meetings_material/2026-03-05/AFib_umap_3d_n500.html)
 
 
 ---
