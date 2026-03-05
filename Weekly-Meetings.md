@@ -20,8 +20,8 @@
 #### What did you achieve?
 
 * Defined the full dataset splits:
-  * Training Set: 489,481 ECGs
-  * Validation Set: 150,000 ECGs
+  * Training Set: 511,585 ECGs
+  * Validation Set: 127,896 ECGs
   * Holdout Set: 150,000 ECGs
 * Trained model on the full dataset using different batch sizes, experimenting with the most successful parameters from the top Optuna trials.
 * Visualized the hyperparameters to find and confirm architectural patterns. 
@@ -55,6 +55,20 @@
 
 * **Flowchart**
 ![Alt text](weekly_meetings_material/2026-03-05/Flowchart.png "Flowchart")
+
+* **Full dataset - best performing model**
+
+  * [Results - (Excel-file)](weekly_meetings_material/2026-03-05/Results.xlsx)
+
+![Alt text](weekly_meetings_material/2026-03-05/01_loss_curve.png "Loss Curve")
+
+![Alt text](weekly_meetings_material/2026-03-05/AFib_umap_2d_n15.png "UMAP")
+
+  * [AFib UMAP 3D (n=15)](weekly_meetings_material/2026-03-05/AFib_umap_3d_n15.html)
+
+![Alt text](weekly_meetings_material/2026-03-05/AFib_umap_2d_n500.png "UMAP")
+
+  * [AFib UMAP 3D (n=50)](weekly_meetings_material/2026-03-05/AFib_umap_3d_n500.html)
 
 
 ---
