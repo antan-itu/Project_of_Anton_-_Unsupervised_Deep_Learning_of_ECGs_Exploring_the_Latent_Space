@@ -62,7 +62,7 @@
 
 * Guidance on the methodology, should we keep the current methods and report the limitations, or change direction based on the methods found in the literature?
 
-* Any other thoughts
+* Any other thoughts?
 
 #### Any other topics
 * Plots:
