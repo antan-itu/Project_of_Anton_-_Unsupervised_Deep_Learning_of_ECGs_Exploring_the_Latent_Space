@@ -1,10 +1,78 @@
 # Anton's Weekly Meetings
 
+* [05 March 2026](#date-12-march-2026)
 * [05 March 2026](#date-05-march-2026)
 * [26 February 2026](#date-26-february-2026)
 * [19 February 2026](#date-19-february-2026)
 * [05 February 2026](#date-05-february-2026)
 * [Template](#date-template)
+
+---
+### Date: 12 March 2026
+
+#### Who did you help this week?
+
+* N/A
+
+#### What helped you this week?
+
+* Discussing the UMAP results with Jørgen, which helped me investigate the limitations of our current model.
+
+* Looking into existing literature to check why standard autoencoders struggle with arrhythmias.
+
+#### What did you achieve?
+
+* Added box plots to the slice plot and ran visualizations for the full model (See plots in 'Any other topics'). We will need some more runs to get more out of the plots.
+
+* Updated the flowchart based on inspiration from the previous meeting - training and holdout sets are now kept separate (See diagram in 'Any other topics').
+
+* Cleaned up the GitHub repository: Updated the naming convention, updated the README file, and changed the results from Excel to CSVs.
+
+* Combined the Overleaf documents and expanded the methods section.
+
+* Spend a lot of time on experimenting with different model architectures (FFT, adding a Classification head, and testing the latent space in a Hicks Network) to force distinct AFib clusters in the UMAP. We found out that the current model cannot separate AFib from normal ECGs
+
+  * We are guessing that the poor clustering is due to, the model focuses on minimizing MSE, so it prioritizes large spikes like the QRS complex and ignores the subtle changes required to detect Atrial Fibrillation.
+
+* I am therefore looking through the existing research, to see what we do differently and I have found 5 articles using slightly different approaches - the articles are added in the bottom of the Overleaf document. Changing the approach might result in better clustering.
+
+  * This is in short my current findings:
+
+    * Eravci et al. (2024): Converts 1D ECGs into 2D scalograms (Wavelet Transform) to feed into the Autoencoder.
+
+    * Song et al. (2024): Replaces standard MSE with a Masked Autoencoder combined with Contrastive Regularization.
+
+    * Kim et al. (2023): Splits the ECG into 3 segments (PreQ, QRS, PostS) and uses LSTMs to capture long-term temporal dependencies better than CNNs.
+
+    * Jiang et al. (2023): Instead of raw voltage, uses an unsupervised Autoencoder to compress RR intervals into the latent space.
+
+    * Silva et al. (2023): Uses beat-by-beat segmentation instead of continuous strips, incorporating local rhythm metrics (LCSD).
+
+#### What did you struggle with?
+
+* Getting distinct AFib clusters in the UMAP projections.
+
+* Uncertainty regarding the methodology, after discussing the UMAP results with Jørgen, I am unsure if we should keep the method as it currently is, or change direction based on the literature.
+
+#### What would you like to work on next week?
+
+* Decide what methodology to use.
+
+#### Where do you need help from Veronika?
+
+* Guidance on the methodology, should we keep the current methods and report the limitations, or change direction based on the methods found in the literature?
+
+* Any other thoughts
+
+#### Any other topics
+* Plots:
+![Alt text](weekly_meetings_material/2026-03-12/Slice_Plots.png "Slice Plots")
+![Alt text](weekly_meetings_material/2026-03-12/Slice_Boxplots.png "Box Plots")
+![Alt text](weekly_meetings_material/2026-03-12/Stacked_Quantile_Distributions.png "Stacked bar chart")
+* Flowchart:
+![Alt text](weekly_meetings_material/2026-03-12/Flowchart_v2.png "Flowchart")
+
+---
 
 ---
 ### Date: 05 March 2026
