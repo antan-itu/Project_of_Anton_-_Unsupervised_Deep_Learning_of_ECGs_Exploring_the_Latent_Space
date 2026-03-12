@@ -46,7 +46,7 @@
 
     * Jiang et al. (2023): Instead of raw voltage, uses an unsupervised Autoencoder to compress RR intervals into the latent space.
 
-    * Silva et al. (2023): Uses beat-by-beat segmentation instead of continuous strips, incorporating local rhythm metrics (LCSD).
+    * Silva et al. (2023): Uses beat-by-beat segmentation instead of continuous strips, incorporating Local Change of Successive Differences (LCSD) - used to measure short-term Heart Rate Variability.
 
 #### What did you struggle with?
 
