@@ -1,13 +1,9 @@
-/Data
-/Exploration and Preparation/ecg_consistency_log.csv
-/Exploration and Preparation/ecg_filled_log.csv
+/data
+/exploration_and_preparation/logs
 /venv
 /~
-/Train in background.md
-/Model Development/FullGridSearch
-/Model Development/HowMuchDataIsEnough
-/Model Development/Optuna
-/Model Development/BatchSizeExperiment
-/Model Development/results/Optuna_Visualizations
-/Exploration and Preparation/logs
-Model Development/results/~$Results.xlsx
+/train_in_background.md
+/model_development/batch_size_experiment
+/model_development/full_grid_search
+/model_development/optuna
+/model_development/results/800k_results.xlsx

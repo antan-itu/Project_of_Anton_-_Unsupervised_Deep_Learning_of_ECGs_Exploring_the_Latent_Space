@@ -55,7 +55,7 @@ GRID_PARAMS = {
   'latent_dim': [512],
   'learning_rate': [0.0005],
   'base_filters': [32],
-  'kernel_size': [11],
+  'kernel_size': [25],
   'num_layers': [3], 
   'pool_size': [3], 
   'activation': ['leaky_relu'],
@@ -353,8 +353,8 @@ np.random.shuffle(indices)
 fold_size = TOTAL_AVAILABLE // K_FOLDS
 
 for idx, p in enumerate(EXPERIMENT_COMBINATIONS):
-  readable_date = datetime.datetime.now().strftime("%m-%d-%Y %H:%M")
-  run_name = f"GridRun_{idx+1:03d}_{datetime.datetime.now().strftime('%m%d_%H%M')}"
+  readable_date = datetime.datetime.now().strftime("%d-%m-%Y %H:%M")
+  run_name = f"GridRun_{idx+1:03d}_{datetime.datetime.now().strftime('%d%m_%H%M')}"
   run_dir = os.path.join(OUTPUT_DIR, run_name)
   plot_dir = os.path.join(run_dir, "plots")
   os.makedirs(plot_dir, exist_ok=True)

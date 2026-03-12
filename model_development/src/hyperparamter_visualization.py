@@ -12,7 +12,7 @@ import matplotlib.patheffects as path_effects
 # 1. Configuration
 # ==========================================
 # Path to the CSV file
-CSV_PATH = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/Model Development/results/Optuna10K.csv"
+CSV_PATH = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/model_development/results/full_dataset_results.csv"
 
 # Where to save the plots
 OUTPUT_DIR = os.path.join(os.path.dirname(CSV_PATH), "Optuna_Visualizations")
@@ -104,7 +104,61 @@ plt.savefig(os.path.join(OUTPUT_DIR, "02_Correlation_Heatmap.png"), dpi=300)
 plt.close()
 
 # ==========================================
-# 5. Plot 3: Slice Plots (Marginal Effects)
+# 5. Plot 3: Slice Plots (Boxplots)
+# ==========================================
+print("Generating Slice Plots (Boxplots) for ALL parameters...")
+
+all_params = HYPERPARAMETERS
+cols = 4
+rows = math.ceil(len(all_params) / cols)
+
+fig, axes = plt.subplots(rows, cols, figsize=(24, 6 * rows))
+axes = axes.flatten()
+
+for i, param in enumerate(all_params):
+    # 1. Draw the Boxplot
+    sns.boxplot(
+        x=param, 
+        y=TARGET_METRIC, 
+        data=df, 
+        ax=axes[i], 
+        palette='viridis', 
+        hue=param, 
+        legend=False,
+        showfliers=True,  # Shows outliers as dots
+        width=0.6
+    )
+    # 2. Overlay the raw data points with jitter for better visibility
+    sns.stripplot(
+        x=param, 
+        y=TARGET_METRIC, 
+        data=df, 
+        ax=axes[i], 
+        color='black', 
+        alpha=0.3, 
+        jitter=True, 
+        size=3
+    )
+    
+    axes[i].set_title(f'Distribution of {param} vs {TARGET_METRIC}', fontsize=12, weight='bold')
+    axes[i].set_xlabel(param, fontsize=11)
+    axes[i].set_ylabel(TARGET_METRIC, fontsize=11)
+    axes[i].grid(True, axis='y', alpha=0.3)
+    
+    # Rotate x-labels for readability
+    if len(df[param].unique()) > 4:
+        axes[i].tick_params(axis='x', rotation=45)
+
+# Remove any empty subplots
+for j in range(i + 1, len(axes)):
+    fig.delaxes(axes[j])
+
+plt.tight_layout()
+plt.savefig(os.path.join(OUTPUT_DIR, "03_Slice_Boxplots.png"), dpi=300)
+plt.close()
+
+# ==========================================
+# 5.5. Plot 3.5: Slice Plots (Marginal Effects)
 # ==========================================
 print("Generating Slice Plots (Marginal Effects) for ALL parameters...")
 
@@ -140,6 +194,7 @@ for j in range(i + 1, len(axes)):
 plt.tight_layout()
 plt.savefig(os.path.join(OUTPUT_DIR, "03_Slice_Plots.png"), dpi=300)
 plt.close()
+
 
 # ==========================================
 # 6. Plot 4: Contour / Interaction Plot
