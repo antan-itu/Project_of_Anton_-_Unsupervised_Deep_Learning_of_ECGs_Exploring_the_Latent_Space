@@ -7,8 +7,8 @@ import umap.umap_ as umap
 import plotly.express as px
 
 # --- 1. SET DIRECTORIES ---
-RUN_DIR = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/Model Development/FullGridSearch/GridRun_001_1103_1008"
-FILE_PATH = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/Data/Full training dataset/training_dataset.h5"
+RUN_DIR = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/model_development/full_grid_search/GridRun_001_0303_1916"
+FILE_PATH = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/data/full_training_set/training_dataset.h5"
 
 PLOT_DIR = os.path.join(RUN_DIR, "plots")
 os.makedirs(PLOT_DIR, exist_ok=True)

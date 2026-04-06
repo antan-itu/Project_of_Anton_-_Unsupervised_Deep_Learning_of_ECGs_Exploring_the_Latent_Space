@@ -9,8 +9,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, roc_auc_score, classification_report, confusion_matrix
 
 # --- 1. SET DIRECTORIES ---
-RUN_DIR = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/Model Development/FullGridSearch/GridRun_001_1003_1323"
-FILE_PATH = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/Data/Full training dataset/training_dataset.h5"
+RUN_DIR = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/model_development/full_grid_search/GridRun_001_1003_1323"
+FILE_PATH = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/data/full_training_set/training_dataset.h5"
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {DEVICE}")
@@ -22,6 +22,10 @@ val_idx = np.load(os.path.join(RUN_DIR, "saved_val_idx.npy"))
 
 print("Extracting exact AFib labels from Ground Truth...")
 df_gt = pd.read_hdf(FILE_PATH, key='GT')
+
+print("Aligning labels to HDF5 array index...")
+df_gt = df_gt.sort_values(by='h5idx').reset_index(drop=True)
+
 df_val_gt = df_gt.iloc[val_idx].copy()
 report_cols = [f'report_{i}' for i in range(18)]
 

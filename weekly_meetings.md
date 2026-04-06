@@ -1,11 +1,60 @@
 # Anton's Weekly Meetings
 
-* [05 March 2026](#date-12-march-2026)
+* [06 April 2026](#date-06-april-2026)
+* [12 March 2026](#date-12-march-2026)
 * [05 March 2026](#date-05-march-2026)
 * [26 February 2026](#date-26-february-2026)
 * [19 February 2026](#date-19-february-2026)
 * [05 February 2026](#date-05-february-2026)
 * [Template](#date-template)
+
+---
+### Date: 06 April 2026
+
+#### Who did you help this week?
+
+* N/A
+
+#### What helped you this week?
+
+* Visualizing ECGs with atrial fibrillation to verify the labels.
+
+* Comparing my project's architecture to existing literature to better understand the model's performance limitations and identify key methodological differences.
+
+#### What did you achieve?
+
+* Diagnosed the 0.50 AUC issue - I've proved that the model's failure to learn is due to misaligned or incorrect clinical labels, resulting in random guessing, rather than a flawed architecture.
+
+* The project have been compared to several other studies. 
+  * Main takeaway: Most studies process ECGs one beat or segment at a time, whereas my model processes 10 second ECGs. The closest existing methodology to mine is Friedman's use of a Denoising Autoencoder (DAE).<br>
+I've summarised the existing research in the table below:
+
+|                      | My Model | Eravci (Wavelet) | Kim (LSTM) | Song (CREMA) | Silva (Sparse AE) | Jiang (CAE-LSTM) | Shan (ECG-AAE) | Zhang (LRA-AE) | Friedman (DAE) |
+|----------------------|----------|------------------|------------|--------------|-------------------|------------------|----------------|----------------|----------------|
+| **Main Goal** | Explore latent space for anomaly detection | Automated Atrial Fibrillation detection | AFib detection using P-wave segments | General-purpose foundation model | Beat-by-beat mobile AFib detection | Predict future paroxysmal AFib attacks | Semi-supervised arrhythmia detection | Filter noise for precise arrhythmia classification | Discover cardiac and non-cardiac diseases |
+| **Input Data** | Raw 1D signal | 2D scalogram | 1D segmented | Raw 1D / masked | ECG Shape | RR | Raw 1D signal | Raw 1D signal | Raw 1D signal |
+| **Sequence Length** | 5000 (10 seconds) | Heartbeat-level | Segment-level | Variable (Transformer) | Beat-by-beat | Sequence of RR intervals | Beat-by-beat | Segment / Beat-by-beat | 10 seconds |
+| **Model Type** | 1D CNN AE | 2D CNN AE | LSTM autoencoder | Foundation model | Sparse AE | CAE & LSTM | Adversarial AE (TCN) | Low-Rank Attention AE | Denoising Autoencoder |
+| **Advantages** | Unconstrained end-to-end learning | Time-frequency representation | Isolates P-wave (PreQ) | Captures deep temporal context | Isolates shape | Captures long-term rhythm patterns | Learns both subtle and large features | Finds relationships across the whole signal | Unsupervised disease profiling |
+| **Detection or Prediction** | Detection | Detection | Detection | Detection | Detection | Prediction | Detection | Detection | Both |
+
+
+#### What did you struggle with?
+
+* Achieving distinct clusters in the UMAP projections.
+
+* Aligning the labels with the ECGs.
+
+#### What would you like to work on next week?
+
+* Figure out whether the labels can be used or not.
+
+#### Where do you need help from Veronika & Jørgen?
+
+* Jørgen, do you have any tips for alignment and what's the status on the other labels (gender, age, etc.)?
+
+#### Any other topics
+* [Slides - PURRlab Presentation](weekly_meetings_material/2026-04-07/PURRlab_5min_presentation.pdf)
 
 ---
 ### Date: 12 March 2026

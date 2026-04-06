@@ -41,7 +41,7 @@ print(f"Using device: {DEVICE}")
 # ================================
 BASE_DIR = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space"
 OUTPUT_DIR = os.path.join(BASE_DIR, "Model Development/FullGridSearch")
-TRAIN_DATA_PATH = os.path.join(BASE_DIR, "Data/Full training dataset/training_dataset.h5")
+TRAIN_DATA_PATH = os.path.join(BASE_DIR, "data/full_training_set/training_dataset.h5")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -67,7 +67,6 @@ GRID_PARAMS = {
 keys, values = zip(*GRID_PARAMS.items())
 EXPERIMENT_COMBINATIONS = [dict(zip(keys, v)) for v in itertools.product(*values)]
 
-
 # ================================
 # 3 Safe RAM Data Loading & Early Stopping
 # ================================
@@ -83,10 +82,26 @@ class ECGDataset:
       stds = self.data.std(dim=2, keepdim=True)
       self.data -= means
       self.data /= (stds + 1e-8)
-      
       del means, stds
       gc.collect()
-      print("Data standardized and ready.")
+      
+      # Extract Classification Labels ---
+      print("Extracting exact AFib labels for Classification Head...")
+      df_gt = pd.read_hdf(h5_file_path, key='GT')
+      report_cols = [f'report_{i}' for i in range(18)]
+      EXACT_TARGETS = ["ATRIAL FIBRILLATION", "Atrial fibrillation", "Atrial fibrillation."]
+      
+      mask = pd.Series(False, index=df_gt.index)
+      for col in report_cols:
+          if col in df_gt.columns:
+              mask |= df_gt[col].fillna('').astype(str).str.strip().isin(EXACT_TARGETS)
+      
+      # Store labels as a PyTorch tensor (N, 1) to match binary classification output
+      self.labels = torch.tensor(mask.astype(int).values, dtype=torch.float32).unsqueeze(1)
+      
+      del df_gt, mask
+      gc.collect()
+      print("Data and Labels standardized and ready.")
 
 class FastTensorDataLoader:
   def __init__(self, dataset, indices, batch_size, shuffle=False):
@@ -112,9 +127,13 @@ class FastTensorDataLoader:
       batch_idx = self.indices[start:end]
       
       x_batch = self.dataset.data[batch_idx].to(DEVICE)
+      # --- NEW: Fetch labels alongside the ECG ---
+      y_class_batch = self.dataset.labels[batch_idx].to(DEVICE)
+      
       self.current_batch += 1
       
-      return x_batch, x_batch 
+      # Return 3 items: Input ECG, Target ECG, Target Label
+      return x_batch, x_batch, y_class_batch 
       
   def __len__(self):
       return self.n_batches
@@ -145,7 +164,7 @@ class EarlyStopping:
           self.counter = 0
 
 # ================================
-# 4 PyTorch Autoencoder Model
+# 4 PyTorch Multi-Task Model
 # ================================
 class ConvAutoencoder(nn.Module):
   def __init__(self, seq_len, in_channels, latent_dim, base_filters, kernel_size,
@@ -187,6 +206,11 @@ class ConvAutoencoder(nn.Module):
       flattened_size = int(np.prod(self.shape_before_flatten))
       
       self.fc_latent = nn.Linear(flattened_size, latent_dim)
+      
+      # Classification Head
+      # A single linear layer mapping the 512 dimensions to a binary 0 or 1
+      self.fc_classifier = nn.Linear(latent_dim, 1)
+      
       self.fc_decoder_input = nn.Linear(latent_dim, flattened_size)
       
       decoder_layers = []
@@ -224,7 +248,14 @@ class ConvAutoencoder(nn.Module):
   def forward(self, x):
       encoded = self.encoder(x)
       flattened = encoded.view(encoded.size(0), -1)
+      
+      # Bottleneck
       latent = self.fc_latent(flattened)
+      
+      # Branch 1 (Classification)
+      class_logits = self.fc_classifier(latent)
+      
+      # Branch 2 (Reconstruction)
       decoded_input = self.fc_decoder_input(latent)
       reshaped = decoded_input.view(decoded_input.size(0), *self.shape_before_flatten)
       decoded = self.decoder(reshaped)
@@ -234,7 +265,8 @@ class ConvAutoencoder(nn.Module):
           pad_size = self.seq_len - decoded.size(2)
           decoded = torch.nn.functional.pad(decoded, (0, pad_size))
       out = self.final_conv(decoded)
-      return out, latent
+      
+      return out, latent, class_logits
 
 # ================================
 # 5 Evaluation & Export Functions
@@ -243,9 +275,9 @@ def evaluate_overall_performance(model, dataloader, eval_batches, prefix=""):
   model.eval()
   y_true, y_pred = [], []
   with torch.no_grad():
-      for i, (x_batch, _) in enumerate(dataloader):
+      for i, (x_batch, _, _) in enumerate(dataloader):
           if i >= eval_batches: break
-          outputs, _ = model(x_batch)
+          outputs, _, _ = model(x_batch)
           y_true.append(x_batch.permute(0, 2, 1).cpu().numpy().flatten())
           y_pred.append(outputs.permute(0, 2, 1).cpu().numpy().flatten())
           
@@ -260,53 +292,28 @@ def evaluate_overall_performance(model, dataloader, eval_batches, prefix=""):
 def export_val_data_and_generate_plots(model, dataloader, history_dict, plot_dir, run_dir, eval_batches, val_idx):
   model.eval()
   
-  x_batch, _ = next(iter(dataloader))
+  x_batch, _, _ = next(iter(dataloader))
   with torch.no_grad():
       if USE_AMP:
           with torch.amp.autocast('cuda'):
-              reconstructed, _ = model(x_batch)
+              reconstructed, _, _ = model(x_batch)
       else:
-          reconstructed, _ = model(x_batch)
+          reconstructed, _, _ = model(x_batch)
   
   x_batch_np = x_batch.permute(0, 2, 1).cpu().numpy()
   reconstructed_np = reconstructed.permute(0, 2, 1).cpu().numpy()
   
-  # 1. Random Reconstructions (Time Domain)
   fig, axes = plt.subplots(5, 2, figsize=(20, 15))
   axes = axes.flatten()
   for i in range(min(10, len(x_batch_np))):
       axes[i].plot(x_batch_np[i, :, 0], label="Original (Lead I)", alpha=0.7)
       axes[i].plot(reconstructed_np[i, :, 0], label="Reconstruction", color='red', linestyle='--')
-      axes[i].set_title(f"Random ECG Sample {i+1} (Time Domain)")
+      axes[i].set_title(f"Random ECG Sample {i+1}")
       axes[i].legend()
   plt.tight_layout()
   plt.savefig(os.path.join(plot_dir, "01_10_random_reconstructions.png"))
   plt.close()
 
-  # 2. Random Reconstructions (Frequency Domain / FFT) ---
-  sampling_rate = 500 
-  n_samples = x_batch_np.shape[2]
-  freqs = np.fft.rfftfreq(n_samples, d=1/sampling_rate)
-  max_freq_idx = np.where(freqs <= 40)[0][-1]
-  
-  fig, axes = plt.subplots(5, 2, figsize=(20, 15))
-  axes = axes.flatten()
-  for i in range(min(10, len(x_batch_np))):
-      # Calculate the magnitude of the FFT for original and reconstruction
-      orig_fft = np.abs(np.fft.rfft(x_batch_np[i, :, 0]))
-      recon_fft = np.abs(np.fft.rfft(reconstructed_np[i, :, 0]))
-      
-      axes[i].plot(freqs[:max_freq_idx], orig_fft[:max_freq_idx], label="Original Spectrum", alpha=0.7)
-      axes[i].plot(freqs[:max_freq_idx], recon_fft[:max_freq_idx], label="Recon Spectrum", color='purple', linestyle='--')
-      axes[i].set_title(f"Frequency Spectrum Sample {i+1} (0-40 Hz)")
-      axes[i].set_xlabel("Frequency (Hz)")
-      axes[i].set_ylabel("Magnitude")
-      axes[i].legend()
-  plt.tight_layout()
-  plt.savefig(os.path.join(plot_dir, "02_fft_reconstructions.png"))
-  plt.close()
-
-  # 3. Loss Curve
   loss = history_dict['loss']
   epochs = range(1, len(loss) + 1)
   plt.figure(figsize=(10, 6))
@@ -318,14 +325,14 @@ def export_val_data_and_generate_plots(model, dataloader, history_dict, plot_dir
   plt.ylabel('Loss')
   plt.legend()
   plt.grid(True, alpha=0.3)
-  plt.savefig(os.path.join(plot_dir, "03_loss_curve.png"))
+  plt.savefig(os.path.join(plot_dir, "02_loss_curve.png"))
   plt.close()
 
   real_ecgs, reconstructed_ecgs, latents = [], [], []
   with torch.no_grad():
-      for i, (xb, _) in enumerate(dataloader):
+      for i, (xb, _, _) in enumerate(dataloader):
           if i >= eval_batches: break
-          out, latent = model(xb)
+          out, latent, _ = model(xb)
           real_ecgs.append(xb.permute(0, 2, 1).cpu().numpy())
           reconstructed_ecgs.append(out.permute(0, 2, 1).cpu().numpy())
           latents.append(latent.cpu().numpy())
@@ -336,17 +343,15 @@ def export_val_data_and_generate_plots(model, dataloader, history_dict, plot_dir
   
   mse_per_sample = np.mean(np.square(real_ecgs - reconstructed_ecgs), axis=(1, 2))
   
-  # 4. Error Histogram
   plt.figure(figsize=(10, 5))
   plt.hist(mse_per_sample, bins=50, color='purple', alpha=0.7, edgecolor='black')
   plt.axvline(np.mean(mse_per_sample), color='red', linestyle='dashed', linewidth=2, label='Mean Error')
   plt.title('Distribution of Reconstruction Errors (MSE)')
   plt.legend()
   plt.grid(True, alpha=0.3)
-  plt.savefig(os.path.join(plot_dir, "04_error_histogram.png"))
+  plt.savefig(os.path.join(plot_dir, "03_error_histogram.png"))
   plt.close()
   
-  # 5. Best/Worst Reconstructions
   best_idx = np.argmin(mse_per_sample)  
   worst_idx = np.argmax(mse_per_sample) 
   
@@ -357,7 +362,7 @@ def export_val_data_and_generate_plots(model, dataloader, history_dict, plot_dir
   axes[1].plot(real_ecgs[worst_idx, :, 0], label="Original", alpha=0.7)
   axes[1].plot(reconstructed_ecgs[worst_idx, :, 0], label="Recon", color='red', linestyle='--')
   axes[1].set_title(f"Worst Recon (Error: {mse_per_sample[worst_idx]:.4f})")
-  plt.savefig(os.path.join(plot_dir, "05_best_worst_reconstruction.png"))
+  plt.savefig(os.path.join(plot_dir, "04_best_worst_reconstruction.png"))
   plt.close()
 
   processed_val_idx = val_idx[:len(latents)]
@@ -372,23 +377,19 @@ full_dataset = ECGDataset(h5_file_path=TRAIN_DATA_PATH)
 TOTAL_AVAILABLE = len(full_dataset.data)
 
 print("\n" + "="*60)
-print(f"STARTING FULL GRID EXPERIMENT: STANDARD {K_FOLDS}-FOLD CV")
+print(f"STARTING FULL GRID EXPERIMENT: MULTI-TASK {K_FOLDS}-FOLD CV")
 print("="*60)
 
-# We define the indices and shuffle them ONCE for the entire standard K-Fold
 indices = np.arange(TOTAL_AVAILABLE)
 np.random.shuffle(indices)
 
-# Safeguard for 1-Fold Test Runs ---
+# Safeguard for 1-Fold testing
 if K_FOLDS == 1:
-    print("Detected K_FOLDS = 1. Defaulting to a standard 80/20 Train/Val split!")
-    fold_size = int(TOTAL_AVAILABLE * 0.20) # 20% for validation
+    fold_size = int(TOTAL_AVAILABLE * 0.20)
 else:
     fold_size = TOTAL_AVAILABLE // K_FOLDS
 
-# Spectral/FFT Loss Weight
-# 0.1 means the FFT error is worth 10% of the raw time-series error.
-FFT_WEIGHT = 0.1 
+CLASS_WEIGHT = 50.0
 
 for idx, p in enumerate(EXPERIMENT_COMBINATIONS):
   readable_date = datetime.datetime.now().strftime("%d-%m-%Y %H:%M")
@@ -400,7 +401,6 @@ for idx, p in enumerate(EXPERIMENT_COMBINATIONS):
   print("\n" + "="*60)
   print(f"STARTING RUN {idx+1}/{len(EXPERIMENT_COMBINATIONS)}: {run_name}")
   print(f"Testing Parameters: {p}")
-  print(f"Using Spectral FFT Loss Weight: {FFT_WEIGHT}")
   print("="*60)
   
   fold_metrics_list = []
@@ -413,7 +413,6 @@ for idx, p in enumerate(EXPERIMENT_COMBINATIONS):
   for fold in range(K_FOLDS):
       print(f"\n   >>> Starting Fold {fold + 1}/{K_FOLDS} (Standard Split)...")
       
-      # Strict, non-overlapping sequential chunks for K-Fold
       val_idx = indices[fold * fold_size : (fold + 1) * fold_size]
       train_idx = np.concatenate([indices[:fold * fold_size], indices[(fold + 1) * fold_size:]])
       
@@ -426,49 +425,67 @@ for idx, p in enumerate(EXPERIMENT_COMBINATIONS):
       ).to(DEVICE)
       
       optimizer = optim.Adam(model.parameters(), lr=p['learning_rate'])
-      criterion = nn.HuberLoss() if p['loss_func'] == 'huber' else nn.MSELoss()
+      
+      criterion_recon = nn.HuberLoss() if p['loss_func'] == 'huber' else nn.MSELoss()
+      
+      # AFib is 10%, Normal is 90%. We weight the positive class by 9.0.
+      weight = torch.tensor([9.0]).to(DEVICE)
+      criterion_class = nn.BCEWithLogitsLoss(pos_weight=weight) 
+      
       early_stopper = EarlyStopping(patience=5, delta=0.001)
       history = {'loss': [], 'val_loss': []}
       
       for epoch in range(150):
           model.train()
           running_loss = 0.0
-          for x_batch, y_batch in train_loader:
+          
+          running_correct_train = 0
+          total_train_samples = 0
+          
+          for x_batch, y_recon_batch, y_class_batch in train_loader:
               optimizer.zero_grad()
-              outputs, _ = model(x_batch)
-              loss_time = criterion(outputs, y_batch)
-              fft_out = torch.fft.rfft(outputs, dim=2)
-              fft_true = torch.fft.rfft(y_batch, dim=2)
-              loss_freq = criterion(torch.abs(fft_out), torch.abs(fft_true))
-              loss = loss_time + (FFT_WEIGHT * loss_freq)
-              # ---------------------------------------------------
+              
+              outputs, _, class_logits = model(x_batch)
+              
+              loss_recon = criterion_recon(outputs, y_recon_batch)
+              loss_class = criterion_class(class_logits, y_class_batch)
+              loss = loss_recon + (CLASS_WEIGHT * loss_class)
               
               loss.backward()
               torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
               optimizer.step()
               running_loss += loss.item()
+              
+              predictions = (torch.sigmoid(class_logits) > 0.5).float()
+              running_correct_train += (predictions == y_class_batch).sum().item()
+              total_train_samples += y_class_batch.size(0)
+              
           train_loss = running_loss / len(train_loader)
+          train_acc = running_correct_train / total_train_samples # Final Train Acc
           
           model.eval()
           val_loss = 0.0
+          running_correct_val = 0
+          total_val_samples = 0
+          
           with torch.no_grad():
-              for x_batch, y_batch in val_loader:
-                  outputs, _ = model(x_batch)
-                  loss_time = criterion(outputs, y_batch)
-                  fft_out = torch.fft.rfft(outputs, dim=2)
-                  fft_true = torch.fft.rfft(y_batch, dim=2)
-                  
-                  loss_freq = criterion(torch.abs(fft_out), torch.abs(fft_true))
-                  loss = loss_time + (FFT_WEIGHT * loss_freq)
-                  # --------------------------------------------------
-                  
+              for x_batch, y_recon_batch, y_class_batch in val_loader:
+                  outputs, _, class_logits = model(x_batch)
+                  loss_recon = criterion_recon(outputs, y_recon_batch)
+                  loss_class = criterion_class(class_logits, y_class_batch)
+                  loss = loss_recon + (CLASS_WEIGHT * loss_class)
                   val_loss += loss.item()
+                  predictions = (torch.sigmoid(class_logits) > 0.5).float()
+                  running_correct_val += (predictions == y_class_batch).sum().item()
+                  total_val_samples += y_class_batch.size(0)
+                  
           val_loss /= len(val_loader)
+          val_acc = running_correct_val / total_val_samples # Final Val Acc
           
           history['loss'].append(train_loss)
           history['val_loss'].append(val_loss)
           if (epoch + 1) % 5 == 0 or epoch == 0:
-              print(f"      Epoch {epoch+1:03d} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}")
+              print(f"      Epoch {epoch+1:03d} | Train Loss: {train_loss:.4f} (Acc: {train_acc:.2%}) | Val Loss: {val_loss:.4f} (Acc: {val_acc:.2%})")
 
           early_stopper(val_loss, model)
           if early_stopper.early_stop:
@@ -476,7 +493,7 @@ for idx, p in enumerate(EXPERIMENT_COMBINATIONS):
               model.load_state_dict(early_stopper.best_model_state)
               break
       
-      eval_batches_metrics = max(1, len(val_idx) // p['batch_size'])
+      eval_batches_metrics = min(500, max(1, len(val_idx) // p['batch_size']))
       train_metrics = evaluate_overall_performance(model, train_loader, eval_batches_metrics, prefix="Train_")
       val_metrics = evaluate_overall_performance(model, val_loader, eval_batches_metrics, prefix="Val_")
       fold_metrics = {**train_metrics, **val_metrics}
@@ -523,7 +540,6 @@ for idx, p in enumerate(EXPERIMENT_COMBINATIONS):
   final_model_path = os.path.join(run_dir, "best_fold_model.pth")
   os.rename(temp_model_path, final_model_path)
 
-  # --- EXACT CSV COLUMN MAPPING ---
   actual_train_size = TOTAL_AVAILABLE - fold_size
   
   csv_row_dict = {
