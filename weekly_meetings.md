@@ -18,53 +18,61 @@
 
 #### What helped you this week?
 
-* Getting the labels aligned
-  * 
+* Fixing label alignment - making it possible to continue model development
 
 #### What did you achieve?
 
-* Aligning the ECGs with metadata - by going back to the source instead of using the prepared HDF5-file.
-* Creating and verifying a new HDF5 - now conatining the correct metadata
-* Checking for missing data and dead leads - excluding bad ECGs
+* Aligned ECGs with metadata by returning to source data (instead of HDF5)
+* Created and verified a new HDF5 - now conatining the correct metadata
+* Checking for missing data and dead leads - removed any bad ECGs
 * Creating training and holdout set
-* Validating correctness of the labels with Jørgen - extracted 400 ECGs for a blinded review.
+* Validating correctness of the labels with Jørgen 
+  * I've extracted 400 ECGs for a blinded review - because we noticed some wrong labels.
 * Implemted Logistic Regression and XGBoost to classify AF
 * Implemented new metrics AUC and PR-AUC
-* Trained several new model - a nearly perfect reconstruction doesn't corespond to the best latent space
-  * High compression = less noise
-    * Smaller latent space = better AUC
-    * Larger kernel-size = better AUC
+* Trained several new model - Main patterns:
+  * Reconstruction quality ≠ useful latent space
+  * High compression = less noise and better downstream performance
+    * Smaller latent space = higher AUC
+    * Larger kernel-size = higher AUC
 * Expanded method and discussion section
-  * Created architecture overview
+* Created architecture overview
 
 #### What did you struggle with?
 
-* What to include in the report?
-  * Setting the scope / Discussion points
-    * Masking - Makes reconstruction worse and AF-detection is unchanged
-    * High compression = less noise
-      * Smaller latent space = better AUC
-      * Larger kernel-size = better AUC
-    * Epistemic and Aleatoric Uncertainty in Ground Truth
+* Report
+  * Page limit?
+  * Is an appendix allowed?
+
+  * Method section depth?
+    * Explaining how every hyperparamter work?
+    * Balance between reproducibility & readability
+
+  * What should be included in the discussion?
+    * Current results:
+      * Masking - Makes reconstruction worse and AF-detection is unchanged
+      * High compression = less noise and better downstream performance
+      * Smaller latent space = higher AUC
+      * Larger kernel-size = higher AUC
+    * Epistemic and Aleatoric Uncertainty in Ground Truth (Incorrect GT)
     * How does this project differ from existing research?
     * Side experiment - how few cases are too few?
-    * The purporse of the model
+    * Model purpose - is it useful?
     * Future work
-  * How many details in the method section?
-    * Explaining hyperparamter?
-  * How many pages?
-  * Can I include an appendix?
-* The model was tuned for the best possible reconstruction, but a good reconstruction doesn't equal to a good latent space
-  * I've spend a lot of time with hyperparameter tuning
+
+* The model was tuned for reconstruction, but reconstruction quality does not imply a well‑structured latent space
+  * I have spend significant time on hyperparameter tuning, because earlier models were trained on incorrect labels
 
 #### What would you like to work on next week?
 
 * Expanding the report
-* Experiment with more hyperparemeters
+* Explore additional hyperparameters - targeting latent space performance
 
 #### Where do you need help from Veronika?
 
-* See "What did you struggle with?"
+* Report scope
+* Method section - level of detail
+* Discussion framing
 
 #### Any other topics
 
