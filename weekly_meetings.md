@@ -56,6 +56,7 @@
       * Larger kernel-size = higher AUC
     * Epistemic and Aleatoric Uncertainty in Ground Truth (Incorrect GT)
     * How does this project differ from existing research?
+    * Comparing to existing research
     * Side experiment - how few cases are too few?
     * Model purpose - is it useful?
     * Future work
