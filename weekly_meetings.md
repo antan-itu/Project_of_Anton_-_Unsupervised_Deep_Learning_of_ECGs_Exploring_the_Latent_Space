@@ -27,14 +27,14 @@
 * Checking for missing data and dead leads - removed any bad ECGs
 * Creating training and holdout set
 * Validating correctness of the labels with Jørgen 
-  * I've extracted 400 ECGs for a blinded review - because we noticed some wrong labels.
+  * > I've extracted 400 ECGs for a blinded review - because we noticed the GT was wrong in some cases. 
 * Implemted Logistic Regression and XGBoost to classify AF
 * Implemented new metrics AUC and PR-AUC
-* Trained several new model - Main patterns:
-  * Reconstruction quality ≠ useful latent space
-  * High compression = less noise and better downstream performance
-    * Smaller latent space = higher AUC
-    * Larger kernel-size = higher AUC
+* > Trained several new model - Main patterns:
+  * > Reconstruction quality ≠ useful latent space
+  * > High compression = less noise and better downstream performance
+    * > Smaller latent space = higher AUC
+    * > Larger kernel-size = higher AUC 
 * Expanded method and discussion section
 * Created architecture overview
 
