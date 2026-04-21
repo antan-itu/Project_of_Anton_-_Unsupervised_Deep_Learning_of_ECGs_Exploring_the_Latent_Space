@@ -43,11 +43,9 @@
 * Report
   * Page limit?
   * Is an appendix allowed?
-
   * Method section depth?
     * Explaining how every hyperparamter work?
     * Balance between reproducibility & readability
-
   * What should be included in the discussion?
     * Current results:
       * Masking - Makes reconstruction worse and AF-detection is unchanged
