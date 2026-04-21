@@ -14,9 +14,12 @@
 
 #### Who did you help this week?
 
+* N/A
+
 #### What helped you this week?
 
-Replace this text with a one/two sentence description of what helped you this week and how.
+* Getting the labels aligned
+  * 
 
 #### What did you achieve?
 
