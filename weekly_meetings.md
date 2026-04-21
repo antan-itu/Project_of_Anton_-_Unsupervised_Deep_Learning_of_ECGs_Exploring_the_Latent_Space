@@ -79,7 +79,7 @@
 * Architecture Overview:
 ![Alt text](weekly_meetings_material/2026-04-21/architecture_overview_v2.png "Architecture Overview")
 
-* Current top 5 results:
+* Current top results:
 
 | Date               | Latent Dim | LR      | Kernel | Loss  | Avg Val RMSE | CI Val RMSE     | Avg Val R² | Avg XGB AUC | CI XGB AUC       | Avg XGB PRAUC | CI XGB PRAUC     | Avg LR AUC | CI LR AUC        | Avg LR PRAUC | CI LR PRAUC      |
 |--------------------|------------|---------|--------|-------|--------------|------------------|------------|-------------|-------------------|----------------|-------------------|-------------|-------------------|---------------|-------------------|
