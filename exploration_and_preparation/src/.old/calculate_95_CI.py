@@ -9,7 +9,6 @@ OUTPUT_CSV = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repositor
 
 print(f"Loading existing results from:\n{INPUT_CSV}\n")
 
-# FIXED: Added sep=';' to handle semicolon-separated files correctly
 df = pd.read_csv(INPUT_CSV, sep=';')
 
 def calculate_95_ci(row):
@@ -48,7 +47,7 @@ if 'Std_Val_RMSE' in cols:
 else:
     print("Warning: 'Std_Val_RMSE' column not found. The CI column was appended at the end.")
 
-# FIXED: Added sep=';' here as well so your output matches your input format
+
 df.to_csv(OUTPUT_CSV, sep=';', index=False)
 
 print(f"\nSuccess! Processed {len(df)} rows.")

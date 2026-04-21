@@ -21,7 +21,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 # Updated to match the cross-validation output
 TARGET_METRIC = "Avg_Val_RMSE"  
 
-# List of hyperparameter columns you want to analyze
+# List of hyperparameters
 HYPERPARAMETERS = [
     "latent_dim", "learning_rate", "base_filters", "kernel_size", 
     "num_layers", "stride_size", "pooling_type", "activation", 

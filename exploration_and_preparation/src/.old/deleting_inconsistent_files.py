@@ -3,7 +3,7 @@ import csv
 
 def delete_flagged_files():
     # --- CONFIGURATION ---
-    # Path to the folder containing your ECG files
+    # Path to the folder containing ECG files
     files_directory = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/Data/MIMIC-IV_Subset/Test"
 
     # Path to the log file we created in the previous step
@@ -52,7 +52,6 @@ def delete_flagged_files():
 
     print(f"Starting deletion (Mode: {'DRY RUN / SIMULATION' if DRY_RUN else 'LIVE / DESTRUCTIVE'})...")
 
-    # Replaced tqdm with enumerate for manual progress tracking
     for i, file_name in enumerate(files_to_delete):
         full_path = os.path.join(files_directory, file_name)
 

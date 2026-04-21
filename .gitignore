@@ -7,3 +7,4 @@
 /model_development/full_grid_search
 /model_development/optuna
 /model_development/results/800k_results.xlsx
+/model_development/experiments

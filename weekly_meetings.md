@@ -1,5 +1,6 @@
 # Anton's Weekly Meetings
 
+* [21 April 2026](#date-21-april-2026)
 * [06 April 2026](#date-06-april-2026)
 * [12 March 2026](#date-12-march-2026)
 * [05 March 2026](#date-05-march-2026)
@@ -7,6 +8,79 @@
 * [19 February 2026](#date-19-february-2026)
 * [05 February 2026](#date-05-february-2026)
 * [Template](#date-template)
+
+---
+### Date: 21 April 2026
+
+#### Who did you help this week?
+
+#### What helped you this week?
+
+Replace this text with a one/two sentence description of what helped you this week and how.
+
+#### What did you achieve?
+
+* Aligning the ECGs with metadata - by going back to the source instead of using the prepared HDF5-file.
+* Creating and verifying a new HDF5 - now conatining the correct metadata
+* Checking for missing data and dead leads - excluding bad ECGs
+* Creating training and holdout set
+* Validating correctness of the labels with Jørgen - extracted 400 ECGs for a blinded review.
+* Implemted Logistic Regression and XGBoost to classify AF
+* Implemented new metrics AUC and PR-AUC
+* Trained several new model - a nearly perfect reconstruction doesn't corespond to the best latent space
+  * High compression = less noise
+    * Smaller latent space = better AUC
+    * Larger kernel-size = better AUC
+* Expanded method and discussion section
+  * Created architecture overview
+
+#### What did you struggle with?
+
+* What to include in the report?
+  * Setting the scope / Discussion points
+    * Masking - Makes reconstruction worse and AF-detection is unchanged
+    * High compression = less noise
+      * Smaller latent space = better AUC
+      * Larger kernel-size = better AUC
+    * Epistemic and Aleatoric Uncertainty in Ground Truth
+    * How does this project differ from existing research?
+    * Side experiment - how few cases are too few?
+    * The purporse of the model
+    * Future work
+  * How many details in the method section?
+    * Explaining hyperparamter?
+  * How many pages?
+  * Can I include an appendix?
+* The model was tuned for the best possible reconstruction, but a good reconstruction doesn't equal to a good latent space
+  * I've spend a lot of time with hyperparameter tuning
+
+#### What would you like to work on next week?
+
+* Expanding the report
+* Experiment with more hyperparemeters
+
+#### Where do you need help from Veronika?
+
+* See "What did you struggle with?"
+
+#### Any other topics
+
+* Architecture Overview:
+![Alt text](weekly_meetings_material/2026-04-21/architecture_overview_v2.png "Architecture Overview")
+
+* Current top 5 results:
+
+| Date               | Latent Dim | LR      | Kernel | Loss  | Avg Val RMSE | CI Val RMSE     | Avg Val R² | Avg XGB AUC | CI XGB AUC       | Avg XGB PRAUC | CI XGB PRAUC     | Avg LR AUC | CI LR AUC        | Avg LR PRAUC | CI LR PRAUC      |
+|--------------------|------------|---------|--------|-------|--------------|------------------|------------|-------------|-------------------|----------------|-------------------|-------------|-------------------|---------------|-------------------|
+| 18-04-2026 13:54   | 512        | 0.0005  | 85     | huber | 0.225        | [0.217, 0.234]   | 0.949      | 0.907       | [0.901, 0.912]    | 0.333          | [0.309, 0.357]    | 0.895       | [0.890, 0.900]    | 0.233         | [0.221, 0.244]    |
+| 18-04-2026 04:24   | 512        | 0.0005  | 75     | huber | 0.223        | [0.219, 0.227]   | 0.950      | 0.903       | [0.899, 0.907]    | 0.327          | [0.309, 0.345]    | 0.893       | [0.886, 0.900]    | 0.230         | [0.209, 0.251]    |
+| 17-04-2026 19:27   | 512        | 0.0005  | 65     | huber | 0.221        | [0.216, 0.226]   | 0.951      | 0.900       | [0.895, 0.904]    | 0.318          | [0.311, 0.324]    | 0.892       | [0.883, 0.902]    | 0.231         | [0.209, 0.253]    |
+| 17-04-2026 08:45   | 512        | 0.0005  | 55     | huber | 0.221        | [0.216, 0.226]   | 0.951      | 0.896       | [0.892, 0.900]    | 0.306          | [0.297, 0.315]    | 0.888       | [0.879, 0.897]    | 0.225         | [0.205, 0.245]    |
+| 19-04-2026 16:02   | 128        | 0.0005  | 45     | huber | 0.308        | [0.305, 0.310]   | 0.905      | 0.895       | [0.884, 0.905]    | 0.303          | [0.275, 0.332]    | 0.879       | [0.859, 0.900]    | 0.206         | [0.177, 0.235]    |
+| 19-04-2026 22:01   | 64         | 0.0005  | 45     | huber | 0.362        | [0.358, 0.366]   | 0.869      | 0.894       | [0.886, 0.901]    | 0.284          | [0.260, 0.307]    | 0.830       | [0.789, 0.871]    | 0.165         | [0.138, 0.192]    |
+| 17-04-2026 02:50   | 512        | 0.0005  | 45     | huber | 0.221        | [0.218, 0.223]   | 0.951      | 0.888       | [0.879, 0.896]    | 0.291          | [0.278, 0.303]    | 0.870       | [0.852, 0.887]    | 0.203         | [0.183, 0.223]    |
+| 19-04-2026 11:12   | 256        | 0.0005  | 45     | huber | 0.264        | [0.259, 0.268]   | 0.930      | 0.886       | [0.880, 0.893]    | 0.277          | [0.251, 0.304]    | 0.853       | [0.825, 0.880]    | 0.180         | [0.142, 0.217]    |
+| 15-04-2026 16:05   | 64         | 0.0005  | 9      | huber | 0.405        | [0.399, 0.410]   | 0.836      | 0.878       | [0.875, 0.881]    | 0.271          | [0.256, 0.286]    | 0.746       | [0.732, 0.761]    | 0.116         | [0.108, 0.124]    |
 
 ---
 ### Date: 06 April 2026

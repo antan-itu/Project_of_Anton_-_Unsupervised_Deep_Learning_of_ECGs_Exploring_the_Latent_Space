@@ -8,7 +8,7 @@ from tqdm import tqdm
 # ==========================================
 # Configuration
 # ==========================================
-# Your original TFRecord path
+# TFRecord path
 TFRECORD_PATH = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/" \
                 "Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/" \
                 "Data/MIMIC-IV_Subset/*.tfrecord"

@@ -8,7 +8,7 @@ FILE_PATH = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository
 print("Loading Data for Visual Check...")
 df_gt = pd.read_hdf(FILE_PATH, key='GT')
 
-# --- THE CRITICAL FIX ---
+
 df_gt = df_gt.sort_values(by='h5idx').reset_index(drop=True)
 
 # Find Normal and AFib indices

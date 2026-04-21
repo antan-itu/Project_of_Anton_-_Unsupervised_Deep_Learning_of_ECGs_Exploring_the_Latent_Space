@@ -77,7 +77,7 @@ def main():
     gt_df = pd.read_hdf(source_h5_path, key='GT')
     print(f"Total ECGs before filtering: {len(gt_df)}")
 
-    # We assume 'study_id' matches the file name in your log.
+    # We assume 'study_id' matches the file name.
     gt_df['match_id'] = gt_df['study_id'].astype(str)
     
     # Keep only rows where the match_id is NOT in our list of bad IDs

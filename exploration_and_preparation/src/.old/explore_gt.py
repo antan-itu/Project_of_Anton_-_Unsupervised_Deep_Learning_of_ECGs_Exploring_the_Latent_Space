@@ -14,14 +14,14 @@ df_ground_truth = pd.read_hdf(FILE_PATH, key='GT')
 total_dataset_size = len(df_ground_truth)
 report_cols = [f'report_{i}' for i in range(18)]
 
-# 1. STRICT PRIMARY MATCHES (No Regex needed!)
+# 1. STRICT PRIMARY MATCHES
 EXACT_TARGETS = [
     "ATRIAL FIBRILLATION",
     "Atrial fibrillation",
     "Atrial fibrillation."
 ]
 
-# 2. BROAD SECONDARY MATCH (To see what we excluded)
+# 2. BROAD SECONDARY MATCH
 secondary_regex = r'(?i)atrial fibrillation'
 
 primary_mask = pd.Series(False, index=df_ground_truth.index)
@@ -56,10 +56,9 @@ for col in report_cols:
             if not text_clean:
                 continue
             
-            # If it's in our exact list
             if text_clean in EXACT_TARGETS:
                 unique_labels_primary.add(text_clean)
-            # Else, if it still contains AFib broadly
+
             elif re.search(secondary_regex, text_clean):
                 unique_labels_secondary.add(text_clean)
 

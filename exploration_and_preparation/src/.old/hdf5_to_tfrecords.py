@@ -51,10 +51,7 @@ def convert_hdf5_to_tfrecords():
     print(f"Opening HDF5 file: {HDF5_PATH}\n")
     
     with h5py.File(HDF5_PATH, 'r') as h5f:
-        # ---------------------------------------------------------
-        # HARDCODED TARGET DATASET
-        # You can change this to 'rhythm_filtered' if you prefer!
-        # ---------------------------------------------------------
+
         target_name = 'rhythm'
         print(f"Targeting specific dataset: '{target_name}'")
         
@@ -80,7 +77,7 @@ def convert_hdf5_to_tfrecords():
                     tf_example = serialize_example(chunk_data[i])
                     writer.write(tf_example)
                     
-    print("\n🎉 Conversion Complete! All TFRecords are saved and ready for the RTX 4090.")
+    print("\nAll TFRecords are saved and ready.")
 
 if __name__ == "__main__":
     convert_hdf5_to_tfrecords()

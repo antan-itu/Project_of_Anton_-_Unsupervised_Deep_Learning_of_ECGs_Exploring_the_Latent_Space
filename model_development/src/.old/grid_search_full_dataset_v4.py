@@ -40,8 +40,10 @@ print(f"Using device: {DEVICE}")
 # 2 Full Grid Search Parameters
 # ================================
 BASE_DIR = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space"
-OUTPUT_DIR = os.path.join(BASE_DIR, "Model Development/FullGridSearch")
-TRAIN_DATA_PATH = os.path.join(BASE_DIR, "Data/Full training dataset/training_dataset.h5")
+OUTPUT_DIR = os.path.join(BASE_DIR, "model_development/experiments")
+
+# UPDATED: Pointing to the new clean 8-lead training split
+TRAIN_DATA_PATH = os.path.join(BASE_DIR, "data/MIMIC_IV_ECG_HDF5/mimic_iv_train.h5")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -55,7 +57,7 @@ GRID_PARAMS = {
   'latent_dim': [512],
   'learning_rate': [0.0005],
   'base_filters': [64],
-  'kernel_size': [25],
+  'kernel_size': [9],
   'num_layers': [3], 
   'pool_size': [3], 
   'activation': ['leaky_relu'],

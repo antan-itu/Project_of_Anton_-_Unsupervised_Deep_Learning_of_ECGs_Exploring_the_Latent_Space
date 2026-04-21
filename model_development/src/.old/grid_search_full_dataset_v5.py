@@ -9,7 +9,6 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as path_effects
-from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 import pandas as pd
 import gc
 import h5py
@@ -20,6 +19,10 @@ import torch.nn as nn
 import torch.optim as optim
 import itertools
 import scipy.stats as st
+
+# NEW IMPORTS FOR XGBOOST EVALUATION
+import xgboost as xgb
+from sklearn.metrics import accuracy_score, roc_auc_score
 
 # Setting seed for reproducibility
 SEED = 42
@@ -40,8 +43,9 @@ print(f"Using device: {DEVICE}")
 # 2 Full Grid Search Parameters
 # ================================
 BASE_DIR = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space"
-OUTPUT_DIR = os.path.join(BASE_DIR, "Model Development/FullGridSearch")
-TRAIN_DATA_PATH = os.path.join(BASE_DIR, "data/full_training_set/training_dataset.h5")
+OUTPUT_DIR = os.path.join(BASE_DIR, "model_development/experiments")
+
+TRAIN_DATA_PATH = os.path.join(BASE_DIR, "data/MIMIC_IV_ECG_HDF5/mimic_iv_train.h5")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -55,13 +59,14 @@ GRID_PARAMS = {
   'latent_dim': [512],
   'learning_rate': [0.0005],
   'base_filters': [64],
-  'kernel_size': [25],
+  'kernel_size': [9],
   'num_layers': [3], 
   'pool_size': [3], 
   'activation': ['leaky_relu'],
   'norm_type': ['batch'],
-  'dropout_rate': [0.0],
-  'loss_func': ['huber']
+  'dropout_rate': [0.3,0.5],
+  'loss_func': ['huber'],
+  'masking_ratio': [0]
 }
 
 keys, values = zip(*GRID_PARAMS.items())
@@ -71,73 +76,52 @@ EXPERIMENT_COMBINATIONS = [dict(zip(keys, v)) for v in itertools.product(*values
 # 3 Safe RAM Data Loading & Early Stopping
 # ================================
 class ECGDataset:
-    def __init__(self, h5_file_path):
-        print(f"\nLoading entire dataset directly into SYSTEM RAM from {h5_file_path}...")
-        with h5py.File(h5_file_path, 'r') as h5f:
-            # 1. Load the raw ECG arrays
-            self.data = torch.tensor(h5f['rhythm_filtered'][:], dtype=torch.float32).permute(0, 2, 1)
-        print(f"Dataset loaded to CPU RAM. Shape: {self.data.shape}")
-        
-        print("Extracting Clinical Labels...")
-        df_gt = pd.read_hdf(h5_file_path, key='GT')
-        
-        # 2. Align the DataFrame to the Array using h5idx
-        print("Aligning labels to HDF5 array index...")
-        df_gt = df_gt.sort_values(by='h5idx').reset_index(drop=True)
-        
-        # Extract AFib labels from the aligned DataFrame
-        report_cols = [f'report_{i}' for i in range(18)]
-        target_list = ["ATRIAL FIBRILLATION", "Atrial fibrillation", "Atrial fibrillation."]
-        mask = pd.Series(False, index=df_gt.index)
-        
-        for col in report_cols:
-            if col in df_gt.columns:
-                col_cleaned = df_gt[col].fillna('').astype(str).str.strip()
-                mask |= col_cleaned.isin(target_list)
-        
-        self.labels = torch.tensor(mask.astype(int).values, dtype=torch.long)
-        print(f"Found {self.labels.sum().item()} AFib cases.")
-        
-        print("Standardizing data (In-Place)...")
-        means = self.data.mean(dim=2, keepdim=True)
-        stds = self.data.std(dim=2, keepdim=True)
-        self.data -= means
-        self.data /= (stds + 1e-8)
-        
-        del means, stds
-        gc.collect()
-        print("Data standardized and ready.")
+  def __init__(self, h5_file_path):
+      print(f"\nLoading entire dataset directly into SYSTEM RAM from {h5_file_path}...")
+      with h5py.File(h5_file_path, 'r') as h5f:
+          self.data = torch.tensor(h5f['rhythm_filtered'][:], dtype=torch.float32).permute(0, 2, 1)
+      print(f"Dataset loaded to CPU RAM. Shape: {self.data.shape}")
+      
+      print("Standardizing data (In-Place)...")
+      means = self.data.mean(dim=2, keepdim=True)
+      stds = self.data.std(dim=2, keepdim=True)
+      self.data -= means
+      self.data /= (stds + 1e-8)
+      
+      del means, stds
+      gc.collect()
+      print("Data standardized and ready.")
 
 class FastTensorDataLoader:
-  def __init__(self, dataset, indices, batch_size, shuffle=False):
-      self.dataset = dataset
-      self.indices = torch.tensor(indices, dtype=torch.long)
-      self.batch_size = batch_size
-      self.shuffle = shuffle
-      self.n_batches = len(self.indices) // self.batch_size
-      
-  def __iter__(self):
-      if self.shuffle:
-          perm = torch.randperm(len(self.indices))
-          self.indices = self.indices[perm]
-      self.current_batch = 0
-      return self
-      
-  def __next__(self):
-      if self.current_batch >= self.n_batches:
-          raise StopIteration
-      
-      start = self.current_batch * self.batch_size
-      end = start + self.batch_size
-      batch_idx = self.indices[start:end]
-      
-      x_batch = self.dataset.data[batch_idx].to(DEVICE)
-      self.current_batch += 1
-      
-      return x_batch, x_batch 
-      
-  def __len__(self):
-      return self.n_batches
+    def __init__(self, dataset, indices, batch_size, shuffle=False):
+        self.dataset = dataset
+        self.indices = torch.tensor(indices, dtype=torch.long)
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.n_batches = math.ceil(len(self.indices) / self.batch_size)
+        
+    def __iter__(self):
+        if self.shuffle:
+            perm = torch.randperm(len(self.indices))
+            self.indices = self.indices[perm]
+        self.current_batch = 0
+        return self
+        
+    def __next__(self):
+        if self.current_batch >= self.n_batches:
+            raise StopIteration
+        
+        start = self.current_batch * self.batch_size
+        end = min(start + self.batch_size, len(self.indices))
+        batch_idx = self.indices[start:end]
+        
+        x_batch = self.dataset.data[batch_idx].to(DEVICE)
+        self.current_batch += 1
+        
+        return x_batch, x_batch 
+        
+    def __len__(self):
+        return self.n_batches
 
 class EarlyStopping:
   def __init__(self, patience=5, delta=0.001):
@@ -169,12 +153,13 @@ class EarlyStopping:
 # ================================
 class ConvAutoencoder(nn.Module):
   def __init__(self, seq_len, in_channels, latent_dim, base_filters, kernel_size,
-               num_layers, pool_size, activation, dropout_rate, norm_type, pooling_type):
+               num_layers, pool_size, activation, dropout_rate, norm_type, pooling_type, masking_ratio=0.0):
       super(ConvAutoencoder, self).__init__()
       
       self.in_channels = in_channels
       self.seq_len = seq_len
-      padding = kernel_size // 2 
+      self.masking_ratio = masking_ratio # Save the parameter
+      padding = kernel_size // 2
       
       encoder_layers = []
       current_channels = in_channels
@@ -242,40 +227,122 @@ class ConvAutoencoder(nn.Module):
       self.final_conv = nn.Conv1d(in_channels, in_channels, 1)
 
   def forward(self, x):
-      encoded = self.encoder(x)
+      # --- NEW MASKING LOGIC ---
+      # Only apply the mask if we are actively training AND the ratio > 0
+      if self.training and self.masking_ratio > 0.0:
+          # Create a binary mask (1 = keep, 0 = drop) of the exact same shape as the input
+          mask = (torch.rand_like(x) > self.masking_ratio).float()
+          x_input = x * mask
+      else:
+          x_input = x
+
+      # Feed the (potentially masked) input into the encoder
+      encoded = self.encoder(x_input)
       flattened = encoded.view(encoded.size(0), -1)
       latent = self.fc_latent(flattened)
       decoded_input = self.fc_decoder_input(latent)
       reshaped = decoded_input.view(decoded_input.size(0), *self.shape_before_flatten)
       decoded = self.decoder(reshaped)
+      
       if decoded.size(2) > self.seq_len:
           decoded = decoded[:, :, :self.seq_len]
       elif decoded.size(2) < self.seq_len:
           pad_size = self.seq_len - decoded.size(2)
           decoded = torch.nn.functional.pad(decoded, (0, pad_size))
+          
       out = self.final_conv(decoded)
+      
+      # Notice we return the reconstruction to compare against the ORIGINAL unmasked 'x' in the loss function
       return out, latent
 
 # ================================
 # 5 Evaluation & Export Functions
 # ================================
 def evaluate_overall_performance(model, dataloader, eval_batches, prefix=""):
-  model.eval()
-  y_true, y_pred = [], []
-  with torch.no_grad():
-      for i, (x_batch, _) in enumerate(dataloader):
-          if i >= eval_batches: break
-          outputs, _ = model(x_batch)
-          y_true.append(x_batch.permute(0, 2, 1).cpu().numpy().flatten())
-          y_pred.append(outputs.permute(0, 2, 1).cpu().numpy().flatten())
-          
-  y_true = np.concatenate(y_true)
-  y_pred = np.concatenate(y_pred)
-  mse = round(float(mean_squared_error(y_true, y_pred)), 3)
-  rmse = round(float(np.sqrt(mse)), 3)
-  mae = round(float(mean_absolute_error(y_true, y_pred)), 3)
-  r2 = round(float(r2_score(y_true, y_pred)), 3)
-  return {f"{prefix}MSE": mse, f"{prefix}RMSE": rmse, f"{prefix}MAE": mae, f"{prefix}R2": r2}
+    model.eval()
+    
+    total_ss_res = 0.0
+    total_ss_tot = 0.0
+    total_abs_err = 0.0
+    total_elements = 0
+    
+    with torch.no_grad():
+        for i, (x_batch, _) in enumerate(dataloader):
+            if i >= eval_batches: break
+            outputs, _ = model(x_batch)
+            
+            y_true = x_batch.reshape(-1)
+            y_pred = outputs.reshape(-1)
+            
+            total_ss_res += torch.sum((y_true - y_pred) ** 2).item()
+            
+            batch_mean = torch.mean(y_true)
+            total_ss_tot += torch.sum((y_true - batch_mean) ** 2).item()
+            
+            total_abs_err += torch.sum(torch.abs(y_true - y_pred)).item()
+            total_elements += y_true.numel()
+            
+    mse = total_ss_res / total_elements
+    rmse = math.sqrt(mse)
+    mae = total_abs_err / total_elements
+    r2 = 1.0 - (total_ss_res / total_ss_tot) if total_ss_tot != 0 else 0.0
+    
+    return {
+        f"{prefix}MSE": round(mse, 3), 
+        f"{prefix}RMSE": round(rmse, 3), 
+        f"{prefix}MAE": round(mae, 3), 
+        f"{prefix}R2": round(r2, 3)
+    }
+
+# NEW FUNCTION: Trains XGBoost on the current fold's latent space
+def evaluate_latent_classification(model, dataset, train_idx, val_idx, global_labels):
+    model.eval()
+    
+    # We use batch size 512 for extremely fast latent extraction
+    ext_train_loader = FastTensorDataLoader(dataset, train_idx, batch_size=512, shuffle=False)
+    ext_val_loader = FastTensorDataLoader(dataset, val_idx, batch_size=512, shuffle=False)
+    
+    X_train, X_val = [], []
+    with torch.no_grad():
+        for xb, _ in ext_train_loader:
+            _, latents = model(xb)
+            X_train.append(latents.cpu().numpy())
+        for xb, _ in ext_val_loader:
+            _, latents = model(xb)
+            X_val.append(latents.cpu().numpy())
+            
+    X_train = np.concatenate(X_train, axis=0)
+    X_val = np.concatenate(X_val, axis=0)
+    
+    # Align labels perfectly with the sequential extraction
+    y_train = global_labels[train_idx]
+    y_val = global_labels[val_idx]
+    
+    num_pos = sum(y_train)
+    num_neg = len(y_train) - num_pos
+    scale_pos_weight = num_neg / num_pos if num_pos > 0 else 1.0
+    
+    # Train XGBoost on the fold's latents (reduced n_estimators to keep the grid search fast)
+    xgb_model = xgb.XGBClassifier(
+        objective='binary:logistic',
+        scale_pos_weight=scale_pos_weight,
+        tree_method='hist',
+        n_estimators=150, 
+        learning_rate=0.05,
+        max_depth=5,
+        eval_metric='auc',
+        random_state=42,
+        n_jobs=-1
+    )
+    xgb_model.fit(X_train, y_train)
+    
+    y_pred_probs = xgb_model.predict_proba(X_val)[:, 1]
+    y_pred_labels = xgb_model.predict(X_val)
+    
+    auc = roc_auc_score(y_val, y_pred_probs)
+    acc = accuracy_score(y_val, y_pred_labels)
+    
+    return {"Val_AUC": round(auc, 4), "Val_Acc": round(acc, 4)}
 
 def export_val_data_and_generate_plots(model, dataloader, history_dict, plot_dir, run_dir, eval_batches, val_idx):
   model.eval()
@@ -364,6 +431,25 @@ def export_val_data_and_generate_plots(model, dataloader, history_dict, plot_dir
 full_dataset = ECGDataset(h5_file_path=TRAIN_DATA_PATH)
 TOTAL_AVAILABLE = len(full_dataset.data)
 
+# NEW BLOCK: Pre-calculate the global target labels to save time in the cross-validation loops
+print("\nExtracting exact AFib labels for XGBoost Evaluation...")
+df_gt_dict = {}
+with h5py.File(TRAIN_DATA_PATH, 'r') as f:
+    gt_group = f['GT']
+    report_cols = [key for key in gt_group.keys() if key.startswith('report_')]
+    for col in report_cols:
+        df_gt_dict[col] = [val.decode('utf-8') for val in gt_group[col][:]]
+
+df_gt = pd.DataFrame(df_gt_dict)
+EXACT_TARGETS = ["ATRIAL FIBRILLATION", "Atrial fibrillation", "Atrial fibrillation."]
+mask = pd.Series(False, index=df_gt.index)
+for col in report_cols:
+    if col in df_gt.columns:
+        mask |= df_gt[col].fillna('').astype(str).str.strip().isin(EXACT_TARGETS)
+
+y_labels_global = mask.astype(int).values
+print(f"Loaded Global Labels. AFib Positives: {sum(y_labels_global)}")
+
 print("\n" + "="*60)
 print(f"STARTING FULL GRID EXPERIMENT: STANDARD {K_FOLDS}-FOLD CV")
 print("="*60)
@@ -404,7 +490,8 @@ for idx, p in enumerate(EXPERIMENT_COMBINATIONS):
       
       model = ConvAutoencoder(
           SEQ_LEN, IN_CHANNELS, p['latent_dim'], p['base_filters'], p['kernel_size'], 
-          p['num_layers'], p['pool_size'], p['activation'], p['dropout_rate'], p['norm_type'], p['pooling_type']
+          p['num_layers'], p['pool_size'], p['activation'], p['dropout_rate'], 
+          p['norm_type'], p['pooling_type'], p['masking_ratio'] # <--- Added here
       ).to(DEVICE)
       
       optimizer = optim.Adam(model.parameters(), lr=p['learning_rate'])
@@ -448,11 +535,17 @@ for idx, p in enumerate(EXPERIMENT_COMBINATIONS):
       eval_batches_metrics = max(1, len(val_idx) // p['batch_size'])
       train_metrics = evaluate_overall_performance(model, train_loader, eval_batches_metrics, prefix="Train_")
       val_metrics = evaluate_overall_performance(model, val_loader, eval_batches_metrics, prefix="Val_")
-      fold_metrics = {**train_metrics, **val_metrics}
+      
+      # NEW XGBOOST EVALUATION CALL
+      print("      Extracting latents and running XGBoost Evaluation...")
+      xgb_metrics = evaluate_latent_classification(model, full_dataset, train_idx, val_idx, y_labels_global)
+      
+      fold_metrics = {**train_metrics, **val_metrics, **xgb_metrics}
       fold_metrics["Fold"] = fold + 1
       fold_metrics_list.append(fold_metrics)
       
       print(f"      Fold {fold + 1} R2 -> Train: {train_metrics['Train_R2']:.3f} | Val: {val_metrics['Val_R2']:.3f}")
+      print(f"      Fold {fold + 1} XGBoost -> Val AUC: {xgb_metrics['Val_AUC']:.4f} | Val Acc: {xgb_metrics['Val_Acc']:.4f}")
       
       if val_metrics['Val_R2'] > best_r2:
           best_r2 = val_metrics['Val_R2']
@@ -491,6 +584,25 @@ for idx, p in enumerate(EXPERIMENT_COMBINATIONS):
   
   final_model_path = os.path.join(run_dir, "best_fold_model.pth")
   os.rename(temp_model_path, final_model_path)
+  
+  # --- FULL LATENT EXTRACTION ---
+  print("\n      Extracting FULL latent space for downstream tasks...")
+  best_model.eval()
+  all_latents = []
+  
+  # Process sequentially to align directly with the HDF5 index
+  full_indices = np.arange(TOTAL_AVAILABLE)
+  full_loader = FastTensorDataLoader(full_dataset, full_indices, batch_size=512, shuffle=False)
+  
+  with torch.no_grad():
+      for i, (x_batch, _) in enumerate(full_loader):
+          _, latent = best_model(x_batch)
+          all_latents.append(latent.cpu().numpy())
+          
+  all_latents = np.concatenate(all_latents, axis=0)
+  full_latents_path = os.path.join(run_dir, "FULL_latents.npy")
+  np.save(full_latents_path, all_latents)
+  print(f"      Saved FULL latents to: {full_latents_path} (Shape: {all_latents.shape})")
 
   # --- EXACT CSV COLUMN MAPPING ---
   actual_train_size = TOTAL_AVAILABLE - fold_size
@@ -508,6 +620,7 @@ for idx, p in enumerate(EXPERIMENT_COMBINATIONS):
       "activation": p['activation'],
       "norm_type": p['norm_type'],
       "dropout_rate": p['dropout_rate'],
+      "masking_ratio": p['masking_ratio'],
       "batch_size": p['batch_size'],
       "loss_func": p['loss_func'],
       "k_folds": K_FOLDS,
@@ -517,7 +630,9 @@ for idx, p in enumerate(EXPERIMENT_COMBINATIONS):
       "Std_Val_RMSE": avg_metrics.get("Std_Val_RMSE"),
       "CI_Val_RMSE": ci_val_rmse,
       "Avg_Val_MAE": avg_metrics.get("Avg_Val_MAE"),
-      "Avg_Val_R2": avg_metrics.get("Avg_Val_R2")
+      "Avg_Val_R2": avg_metrics.get("Avg_Val_R2"),
+      "Avg_Val_AUC": avg_metrics.get("Avg_Val_AUC"), # NEW METRIC
+      "Avg_Val_Acc": avg_metrics.get("Avg_Val_Acc")  # NEW METRIC
   }
   
   summary_df = pd.DataFrame([csv_row_dict], columns=list(csv_row_dict.keys()))

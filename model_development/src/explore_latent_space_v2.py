@@ -5,15 +5,16 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import umap.umap_ as umap
 import plotly.express as px
+import h5py  # Added h5py import
 
 # --- 1. SET DIRECTORIES ---
-RUN_DIR = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/model_development/full_grid_search/GridRun_001_0303_1916"
-FILE_PATH = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/data/full_training_set/training_dataset.h5"
+RUN_DIR = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/model_development/experiments/GridRun_002_1704_0250"
+FILE_PATH = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/data/MIMIC_IV_ECG_HDF5/mimic_iv_train.h5"
 
 PLOT_DIR = os.path.join(RUN_DIR, "plots")
 os.makedirs(PLOT_DIR, exist_ok=True)
 
-# --- 2. DEFINE YOUR EXACT TARGET LABELS ---
+# --- 2. DEFINE TARGET LABELS ---
 EXACT_LABELS = {
     "AFib": [
         "ATRIAL FIBRILLATION",
@@ -22,7 +23,7 @@ EXACT_LABELS = {
     ],
 }
 
-# --- 3. TUNED UMAP PARAMETERS ---
+# --- 3. UMAP PARAMETERS ---
 N_NEIGHBORS = 25
 MIN_DIST = 0.01
 
@@ -45,8 +46,19 @@ umap_embeddings_3d = reducer_3d.fit_transform(latents)
 
 # --- 5. EXTRACT CLINICAL TEXT & HOVER DATA ---
 print("Extracting clinical labels from GT for validation subset...")
-df_gt = pd.read_hdf(FILE_PATH, key='GT')
-report_cols = [f'report_{i}' for i in range(18)]
+
+df_gt_dict = {}
+with h5py.File(FILE_PATH, 'r') as f:
+    gt_group = f['GT']
+    # Dynamically find all report columns
+    report_cols = [key for key in gt_group.keys() if key.startswith('report_')]
+    
+    for col in report_cols:
+        # Load the raw bytes and decode them into utf-8 strings
+        df_gt_dict[col] = [val.decode('utf-8') for val in gt_group[col][:]]
+
+# Build the DataFrame from the decoded dictionary
+df_gt = pd.DataFrame(df_gt_dict)
 
 # Extract only the samples evaluated by the model
 df_val_gt = df_gt.iloc[val_idx].copy()
@@ -62,7 +74,7 @@ hover_snippets = clean_reports.str.slice(0, 250) + "..."
 for label_name, target_list in EXACT_LABELS.items():
     print(f"\n--- Processing Label: {label_name} ---")
     
-    # Apply Strict Match Logic
+    # Apply Match Logic
     mask = pd.Series(False, index=df_val_gt.index)
 
     for col in report_cols:
