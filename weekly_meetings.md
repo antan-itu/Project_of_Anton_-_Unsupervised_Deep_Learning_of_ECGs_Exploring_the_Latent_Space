@@ -63,7 +63,7 @@ Reconstructions:
 
 #### Where do you need help from Veronika?
 
-* One the report is more complete, would you be willing to review it?
+* Once the report is more complete, would you be willing to review it?
 * Discuss pool size 10 vs 15
 
 #### Any other topics
