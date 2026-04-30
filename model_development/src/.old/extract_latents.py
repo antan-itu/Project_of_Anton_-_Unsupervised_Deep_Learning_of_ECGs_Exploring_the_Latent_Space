@@ -12,7 +12,7 @@ DATA_PATH = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository
 MODEL_PATH = os.path.join(RUN_DIR, "best_fold_model.pth")
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-BATCH_SIZE = 512 # Massive batch size for fast inference
+BATCH_SIZE = 512
 
 # --- 2. REBUILD THE EXACT ARCHITECTURE ---
 class ConvAutoencoder(nn.Module):

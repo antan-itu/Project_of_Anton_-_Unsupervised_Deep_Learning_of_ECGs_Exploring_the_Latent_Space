@@ -53,16 +53,16 @@ IN_CHANNELS = 8
 K_FOLDS = 5
 
 GRID_PARAMS = {
-  'batch_size': [64],
+  'batch_size': [128],
   'pooling_type': ['average'],
   'latent_dim': [128],
   'learning_rate': [0.0005],
-  'base_filters': [64],
-  'kernel_size': [45],
+  'base_filters': [256],
+  'kernel_size': [75],
   'num_layers': [3], 
-  'pool_size': [3], 
-  'activation': ['leaky_relu'],
-  'norm_type': ['batch'],
+  'pool_size': [10], 
+  'activation': ['relu'],
+  'norm_type': ['layer'],
   'dropout_rate': [0],
   'loss_func': ['huber'],
   'masking_ratio': [0]
@@ -75,11 +75,12 @@ EXPERIMENT_COMBINATIONS = [dict(zip(keys, v)) for v in itertools.product(*values
 # 3 Safe RAM Data Loading & Early Stopping
 # ================================
 class ECGDataset:
-  def __init__(self, h5_file_path):
-      print(f"\nLoading entire dataset directly into SYSTEM RAM from {h5_file_path}...")
+  def __init__(self, h5_file_path, seq_len):
+      print(f"\nLoading dataset into RAM from {h5_file_path}...")
       with h5py.File(h5_file_path, 'r') as h5f:
-          self.data = torch.tensor(h5f['rhythm_filtered'][:], dtype=torch.float32).permute(0, 2, 1)
-      print(f"Dataset loaded to CPU RAM. Shape: {self.data.shape}")
+          # Slice the sequence to the defined length
+          self.data = torch.tensor(h5f['rhythm_filtered'][:], dtype=torch.float32).permute(0, 2, 1)[:, :, :seq_len]
+      print(f"Dataset loaded to RAM. Shape: {self.data.shape}")
       
       print("Standardizing data (In-Place)...")
       means = self.data.mean(dim=2, keepdim=True)
@@ -349,7 +350,7 @@ def export_val_data_and_generate_plots(model, dataloader, history_dict, plot_dir
       axes[i].plot(x_batch_np[i, :, 0], label="Original (Lead I)", alpha=0.7)
       axes[i].plot(reconstructed_np[i, :, 0], label="Reconstruction", color='red', linestyle='--')
       axes[i].set_title(f"Random ECG Sample {i+1}")
-      axes[i].legend()
+      axes[i].legend(loc='upper right')
   plt.tight_layout()
   plt.savefig(os.path.join(plot_dir, "01_10_random_reconstructions.png"))
   plt.close()
@@ -406,7 +407,7 @@ def export_val_data_and_generate_plots(model, dataloader, history_dict, plot_dir
   plt.savefig(os.path.join(plot_dir, "04_best_worst_reconstruction.png"))
   plt.close()
 
-  # NEW: Classification Curves (ROC and PR)
+  # Classification Curves (ROC and PR)
   if best_clf_data is not None:
       y_val, xgb_probs, lr_probs = best_clf_data
 
@@ -426,18 +427,54 @@ def export_val_data_and_generate_plots(model, dataloader, history_dict, plot_dir
       plt.savefig(os.path.join(plot_dir, "05_roc_curve.png"), dpi=300)
       plt.close()
 
-      # PR Curve Plot
+# PR Curve Plot
       prec_xgb, rec_xgb, _ = precision_recall_curve(y_val, xgb_probs)
       prec_lr, rec_lr, _ = precision_recall_curve(y_val, lr_probs)
       
+      # Calculate prevalence baseline
+      prevalence = np.mean(y_val)
+      
+      # Calculate F1 scores across all thresholds
+      f1_xgb = np.divide(2 * (prec_xgb * rec_xgb), (prec_xgb + rec_xgb), 
+                         out=np.zeros_like(prec_xgb), where=(prec_xgb + rec_xgb) != 0)
+      f1_lr = np.divide(2 * (prec_lr * rec_lr), (prec_lr + rec_lr), 
+                        out=np.zeros_like(prec_lr), where=(prec_lr + rec_lr) != 0)
+      
+      # Locate the highest F1 score for XGBoost
+      best_idx_xgb = np.argmax(f1_xgb)
+      max_f1_xgb = f1_xgb[best_idx_xgb]
+      best_rec_xgb = rec_xgb[best_idx_xgb]
+      best_prec_xgb = prec_xgb[best_idx_xgb]
+      
+      # Locate the highest F1 score for LogReg
+      best_idx_lr = np.argmax(f1_lr)
+      max_f1_lr = f1_lr[best_idx_lr]
+      best_rec_lr = rec_lr[best_idx_lr]
+      best_prec_lr = prec_lr[best_idx_lr]
+      
       plt.figure(figsize=(8, 6))
+      
+      # Plot the main PR curves
       plt.plot(rec_xgb, prec_xgb, color='#1d3557', linewidth=2, label=f'XGBoost (PR-AUC = {average_precision_score(y_val, xgb_probs):.3f})')
       plt.plot(rec_lr, prec_lr, color='#e63946', linewidth=2, label=f'LogReg (PR-AUC = {average_precision_score(y_val, lr_probs):.3f})')
+      
+      # Plot the Max F1 points
+      plt.plot(best_rec_xgb, best_prec_xgb, marker='o', markersize=9, color='#1d3557', markeredgecolor='white', 
+               linestyle='None', label=f'XGB F1 ({max_f1_xgb:.3f})')
+      plt.plot(best_rec_lr, best_prec_lr, marker='o', markersize=12, color='#e63946', markeredgecolor='black', 
+               linestyle='None', label=f'LogReg F1 ({max_f1_lr:.3f})')
+      
+      # Add the horizontal prevalence line
+      plt.axhline(y=prevalence, color='gray', linestyle=':', linewidth=2, label=f'Prevalence Baseline ({prevalence:.3f})')
+      
       plt.title('Precision-Recall Curve (Best Fold Evaluation)')
       plt.xlabel('Recall')
       plt.ylabel('Precision')
-      plt.legend(loc='lower left')
+      
+      # Adjust legend to avoid covering the lines (usually top right or lower left is best for PR curves)
+      plt.legend(loc='lower left', fontsize='small')
       plt.grid(True, linestyle='--', alpha=0.5)
+      
       plt.savefig(os.path.join(plot_dir, "06_pr_curve.png"), dpi=300)
       plt.close()
 
@@ -450,7 +487,7 @@ def export_val_data_and_generate_plots(model, dataloader, history_dict, plot_dir
 # ================================
 # 6 THE EXPERIMENT EXECUTION
 # ================================
-full_dataset = ECGDataset(h5_file_path=TRAIN_DATA_PATH)
+full_dataset = ECGDataset(h5_file_path=TRAIN_DATA_PATH, seq_len=SEQ_LEN)
 TOTAL_AVAILABLE = len(full_dataset.data)
 
 print("\nExtracting exact AFib labels for Classification Evaluation...")
@@ -614,6 +651,7 @@ for idx, p in enumerate(EXPERIMENT_COMBINATIONS):
   csv_row_dict = {
       "split": f"{actual_train_size:,} / {fold_size:,}",
       "date": readable_date,
+      "seq_len": SEQ_LEN,
       "latent_dim": p['latent_dim'],
       "learning_rate": p['learning_rate'],
       "base_filters": p['base_filters'],

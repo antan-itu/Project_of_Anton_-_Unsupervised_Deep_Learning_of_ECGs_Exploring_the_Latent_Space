@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import seaborn as sns
 import umap.umap_ as umap
 import plotly.express as px
@@ -16,7 +17,7 @@ os.makedirs(PLOT_DIR, exist_ok=True)
 
 # --- 2. DEFINE TARGET LABELS ---
 EXACT_LABELS = {
-    "AFib": [
+    "AF": [
         "ATRIAL FIBRILLATION",
         "Atrial fibrillation",
         "Atrial fibrillation."
@@ -70,7 +71,6 @@ for label_name, target_list in EXACT_LABELS.items():
     mask = mask.astype(int)
     label_strings = [label_name if val == 1 else 'Other' for val in mask.values]
     
-   
     plot_df = pd.DataFrame({
         'UMAP_3D_1': umap_embeddings_3d[:, 0],
         'UMAP_3D_2': umap_embeddings_3d[:, 1],
@@ -79,49 +79,76 @@ for label_name, target_list in EXACT_LABELS.items():
         'Report_Snippet': hover_snippets 
     })
     
-    plot_df = plot_df.sort_values(by='Diagnosis', ascending=False)
+    # Sort to ensure AFib renders on top
+    plot_df['sort_order'] = plot_df['Diagnosis'].map({'Other': 0, label_name: 1})
+    plot_df = plot_df.sort_values(by='sort_order')
     
     # -------------------------------------
-    # Generate 36 Rotation Frames for LaTeX / Overleaf
+    # Generate Rotation Frames for LaTeX / Overleaf
     # -------------------------------------
     print(f"Generating 3D rotation frames for Overleaf ({label_name})...")
     frames_dir = os.path.join(PLOT_DIR, f"{label_name}_3d_frames")
     os.makedirs(frames_dir, exist_ok=True)
 
-    fig = plt.figure(figsize=(8, 8))
-    ax = fig.add_subplot(111, projection='3d')
+    # Setup Colors and Legend Handles
+    color_map = {'Other': '#8da0cb', label_name: '#fc8d62'}
+    
+    legend_elements = [
+        Line2D([0], [0], marker='o', color='w', label=k,
+               markerfacecolor=v, markersize=10, markeredgecolor='k')
+        for k, v in color_map.items()
+    ]
 
-    # Separate data to plot 'Other' first, so 'AFib' renders on top
     other_mask = plot_df['Diagnosis'] == 'Other'
     target_mask = plot_df['Diagnosis'] == label_name
 
-    # Plot 'Other'
-    ax.scatter(plot_df.loc[other_mask, 'UMAP_3D_1'], 
-               plot_df.loc[other_mask, 'UMAP_3D_2'], 
-               plot_df.loc[other_mask, 'UMAP_3D_3'], 
-               c='lightgrey', s=5, alpha=0.3, edgecolors='none', label='Other')
-    
-    # Plot target (AFib)
-    ax.scatter(plot_df.loc[target_mask, 'UMAP_3D_1'], 
-               plot_df.loc[target_mask, 'UMAP_3D_2'], 
-               plot_df.loc[target_mask, 'UMAP_3D_3'], 
-               c='red', s=10, alpha=0.8, edgecolors='none', label=label_name)
+    # Create 180 frames based on the 2-degree interval
+    angles = range(0, 360, 2)
+    print(f"Generating {len(angles)} frames in '{frames_dir}'...")
 
-    # Clean up axes for a professional look
-    ax.set_xticklabels([])
-    ax.set_yticklabels([])
-    ax.set_zticklabels([])
-    ax.set_title(f"3D Latent Space Projection: {label_name}")
-    ax.legend(loc='upper right')
+    for i, angle in enumerate(angles):
+        fig = plt.figure(figsize=(10, 8), dpi=100)
+        ax = fig.add_subplot(111, projection='3d')
 
-    # Rotate the camera in 10-degree increments and save a frame
-    for angle in range(0, 360, 10):
-        ax.view_init(elev=20, azim=angle)
-        # Using zero-padding (e.g., frame_000.png, frame_010.png) so LaTeX sorts them correctly
-        frame_path = os.path.join(frames_dir, f"frame_{angle:03d}.png")
-        plt.savefig(frame_path, dpi=150, bbox_inches='tight')
+        # Plot 'Other'
+        ax.scatter(
+            plot_df.loc[other_mask, 'UMAP_3D_1'], 
+            plot_df.loc[other_mask, 'UMAP_3D_2'], 
+            plot_df.loc[other_mask, 'UMAP_3D_3'], 
+            c=color_map['Other'], s=15, alpha=0.5, edgecolor='k', linewidth=0.2
+        )
+        
+        # Plot target 
+        ax.scatter(
+            plot_df.loc[target_mask, 'UMAP_3D_1'], 
+            plot_df.loc[target_mask, 'UMAP_3D_2'], 
+            plot_df.loc[target_mask, 'UMAP_3D_3'], 
+            c=color_map[label_name], s=40, alpha=1.0, edgecolor='k', linewidth=0.3
+        )
 
-    plt.close(fig)
-    print(f"Saved 36 animation frames to: {frames_dir}")
+        # Apply target styling and dimensions
+        ax.set_title(f"3D Latent Space Projection")
+        ax.set_xlabel('Dim 1')
+        ax.set_ylabel('Dim 2')
+        ax.set_zlabel('Dim 3')
+        
+        # Hide raw tick numbers for a cleaner topological view
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        ax.set_zticklabels([])
+
+        # Legend
+        ax.legend(handles=legend_elements, loc='upper right', title="Diagnosis")
+
+        # Rotating Camera
+        ax.view_init(elev=30, azim=angle)
+        fig.subplots_adjust(left=0.0, right=1.0, top=0.9, bottom=0.1)
+
+        # Use zero-padded frame naming for standard sorting
+        frame_path = os.path.join(frames_dir, f"frame_{i:03d}.png")
+        plt.savefig(frame_path)
+        plt.close(fig)
+
+    print(f"Saved {len(angles)} animation frames to: {frames_dir}")
 
 print("\nAll patterns processed successfully!")

@@ -1,5 +1,6 @@
 # Anton's Weekly Meetings
 
+* [30 April 2026](#date-30-april-2026)
 * [21 April 2026](#date-21-april-2026)
 * [06 April 2026](#date-06-april-2026)
 * [12 March 2026](#date-12-march-2026)
@@ -8,6 +9,68 @@
 * [19 February 2026](#date-19-february-2026)
 * [05 February 2026](#date-05-february-2026)
 * [Template](#date-template)
+
+---
+### Date: 30 April 2026
+
+#### Who did you help this week?
+
+* N/A
+
+#### What helped you this week?
+
+* Reviewing existing research helped me clarify several points I had overlooked in the report.
+
+#### What did you achieve?
+
+* Developed a better understanding of (I've still got plenty to learn):
+  * The hyperparameters and their impact on the model
+  * The performance metrics
+* Expanded the report
+* Improved model performance, by focusing on AF detection instead of reconstruction
+* Experimenting with different ECG lengths (10 and 5 seconds) - results in similar performance and half the training time
+* Implemented a paried t-test comparing 4 models against the best - applying Holm–Bonferroni correction
+
+#### What did you struggle with?
+
+* Understanding why a pool size of 15 results in good AF detection, despite poor reconstruction quality
+
+Downsampling: <br>
+Layer 1: 5000 / 15 = 333 <br>
+Layer 2: 333 / 15 = 22 <br>
+Layer 3: 22 / 15 = 1 <br><br>
+Upsampling: <br>
+Layer 3: 1 * 15 = 15 <br>
+Layer 2: 15 * 15 = 225 <br>
+Layer 1: 225 * 15 = 3375 <br><br>
+Reconstructions:
+![Alt text](weekly_meetings_material/2026-04-30/pool_size_15_reconstructions.png "Reconstructions")
+
+| pool_size | Avg_Val_RMSE | CI_Val_RMSE       | Avg_Val_R2 | Avg_XGB_PRAUC | CI_XGB_PRAUC       | Avg_LR_PRAUC | CI_LR_PRAUC        |
+|-----------|--------------|-------------------|------------|----------------|---------------------|--------------|---------------------|
+| 15        | 0.66         | [0.660, 0.661]    | 0.564      | 0.395          | [0.373, 0.417]      | 0.475        | [0.452, 0.499]      |
+| 10        | 0.333        | [0.331, 0.336]    | 0.889      | 0.378          | [0.363, 0.392]      | 0.449        | [0.405, 0.494]      |
+
+
+#### What would you like to work on next week?
+
+* Select a final model (probably pool size 10)
+  * Use holdout set for the final evaluation
+  * Run statistical tests for the top 5 models (do you recommend a statistical test?)
+* Expand the results section
+* Dive into more of the existing research
+* Get a better understanding of more hyperparameters and metrics
+
+#### Where do you need help from Veronika?
+
+* One the report is more complete, would you be willing to review it?
+* Discuss pool size 10 vs 15
+
+#### Any other topics
+
+* N/A
+
+
 
 ---
 ### Date: 21 April 2026

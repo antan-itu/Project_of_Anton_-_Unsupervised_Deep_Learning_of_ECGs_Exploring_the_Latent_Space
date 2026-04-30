@@ -5,10 +5,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import umap.umap_ as umap
 import plotly.express as px
-import h5py  # Added h5py import
+import h5py
 
 # --- 1. SET DIRECTORIES ---
-RUN_DIR = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/model_development/experiments/GridRun_002_1704_0250"
+RUN_DIR = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/model_development/experiments/GridRun_005_2604_2227"
 FILE_PATH = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/data/MIMIC_IV_ECG_HDF5/mimic_iv_train.h5"
 
 PLOT_DIR = os.path.join(RUN_DIR, "plots")
@@ -67,14 +67,13 @@ df_val_gt = df_gt.iloc[val_idx].copy()
 combined_reports = df_val_gt[report_cols].fillna('').astype(str).agg(' '.join, axis=1)
 clean_reports = combined_reports.str.strip().str.replace(r'\s+', ' ', regex=True)
 
-# Truncate to the first 250 characters so the Plotly hover box doesn't cover the entire screen
+# Truncate first 250 characters so the hover box doesn't cover thescreen
 hover_snippets = clean_reports.str.slice(0, 250) + "..."
 
 # --- 6. LOOP THROUGH EVERY PATTERN ---
 for label_name, target_list in EXACT_LABELS.items():
     print(f"\n--- Processing Label: {label_name} ---")
     
-    # Apply Match Logic
     mask = pd.Series(False, index=df_val_gt.index)
 
     for col in report_cols:
