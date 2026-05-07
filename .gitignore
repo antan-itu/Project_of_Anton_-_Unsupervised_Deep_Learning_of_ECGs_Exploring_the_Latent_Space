@@ -6,5 +6,6 @@
 /model_development/batch_size_experiment
 /model_development/full_grid_search
 /model_development/optuna
-/model_development/results/800k_results.xlsx
+/model_development/results/.old/800k_results.xlsx
+/model_development/results/.old/optuna_visualizations/Thumbs.db
 /model_development/experiments

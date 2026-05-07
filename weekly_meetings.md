@@ -1,5 +1,6 @@
 # Anton's Weekly Meetings
 
+* [07 May 2026](#date-07-may-2026)
 * [30 April 2026](#date-30-april-2026)
 * [21 April 2026](#date-21-april-2026)
 * [06 April 2026](#date-06-april-2026)
@@ -9,6 +10,55 @@
 * [19 February 2026](#date-19-february-2026)
 * [05 February 2026](#date-05-february-2026)
 * [Template](#date-template)
+
+---
+### Date: 07 May 2026
+
+#### Who did you help this week?
+
+* N/A
+
+#### What helped you this week?
+
+* Updating the introduction to match Veronika’s structure:
+  * What is the problem?
+  * How are others solving the problem?
+  * How do we propose to solve it?
+
+
+#### What did you achieve?
+
+* Improved the following sections:
+  * Introudction
+  * Literature Review
+  * Method
+* Added additional references 
+
+#### What did you struggle with?
+
+* Data leakage: I've split the ECGs randomly on record-level instead of patient-level...
+  * How should I address this in the report? In limitations?
+
+#### What would you like to work on next week?
+
+* Be ready for report review
+
+#### Where do you need help from Veronika?
+
+* What do you expect when reviewing the report?
+  * What's your focus? (Structure, clarity, methodology)
+  * How polished does the report need to be at this stage?
+  * Do you also review the GitHub repository?
+
+* Clarifying the exam format:
+  * 10-15 minutes presentation
+  * 15 minutes of questions
+  * 5 minutes votation
+  * 5 minutes feedback
+
+#### Any other topics
+
+* Language barrier - I find it difficult to explain complex concepts in English
 
 ---
 ### Date: 30 April 2026
@@ -69,7 +119,6 @@ Reconstructions:
 #### Any other topics
 
 * N/A
-
 
 
 ---
