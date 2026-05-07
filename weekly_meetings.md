@@ -50,6 +50,11 @@
   * How polished does the report need to be at this stage?
   * Do you also review the GitHub repository?
 
+* How should the holdout set be evaluated?
+  * Bootstrapping for 95% Confidence Interval?
+  * Should the holdout results be presented alongside the top 5 architectures or in a separate section?
+  * Should I include plots from the holdout set (ROC‑AUC, PR‑AUC, reconstructions), or focus on plots from the training/validation folds?
+
 * How to compare models (rank 1 & 5) - Is it possible to run a statistical test between XGB PR-AUC and LR PR-AUC? See table 1
 
 * Clarifying the exam format:
