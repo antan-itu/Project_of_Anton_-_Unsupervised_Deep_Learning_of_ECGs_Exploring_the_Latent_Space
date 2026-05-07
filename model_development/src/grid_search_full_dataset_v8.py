@@ -57,7 +57,7 @@ GRID_PARAMS = {
   'pooling_type': ['average'],
   'latent_dim': [128],
   'learning_rate': [0.0005],
-  'base_filters': [256],
+  'base_filters': [128],
   'kernel_size': [75],
   'num_layers': [3], 
   'pool_size': [10], 
@@ -461,7 +461,7 @@ def export_val_data_and_generate_plots(model, dataloader, history_dict, plot_dir
       # Plot the Max F1 points
       plt.plot(best_rec_xgb, best_prec_xgb, marker='o', markersize=9, color='#1d3557', markeredgecolor='white', 
                linestyle='None', label=f'XGB F1 ({max_f1_xgb:.3f})')
-      plt.plot(best_rec_lr, best_prec_lr, marker='o', markersize=12, color='#e63946', markeredgecolor='black', 
+      plt.plot(best_rec_lr, best_prec_lr, marker='o', markersize=9, color='#e63946', markeredgecolor='white', 
                linestyle='None', label=f'LogReg F1 ({max_f1_lr:.3f})')
       
       # Add the horizontal prevalence line
