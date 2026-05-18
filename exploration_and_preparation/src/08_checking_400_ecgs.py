@@ -72,7 +72,7 @@ csv_path = os.path.join(OUTPUT_DIR, "manual_afib_review.csv")
 # Adding a column for labeling
 review_df = pd.DataFrame({
     'HDF5_Index': random_indices,
-    'Manual_AFib_Label': ''  # Suggestion: Fill with 1 for AFib, 0 for Normal/Other
+    'Manual_AFib_Label': '' 
 })
 
 review_df.to_csv(csv_path, index=False)

@@ -454,7 +454,7 @@ def main():
     train_loader = FastTensorDataLoader(train_dataset, batch_size=config['batch_size'], shuffle=False)
     y_train = extract_afib_labels(TRAIN_DATA_PATH)
     
-    X_train, _ = get_latents_and_reconstruction(model, train_loader)
+    X_train, _, _ = get_latents_and_reconstruction(model, train_loader)
     
     # Clean up RAM
     del train_dataset, train_loader
@@ -529,6 +529,3 @@ if __name__ == "__main__":
     main()
     print("="*60)
     
-
-if __name__ == "__main__":
-    main()

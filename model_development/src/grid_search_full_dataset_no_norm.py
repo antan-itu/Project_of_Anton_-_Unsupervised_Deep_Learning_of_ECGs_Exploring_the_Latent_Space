@@ -75,22 +75,15 @@ EXPERIMENT_COMBINATIONS = [dict(zip(keys, v)) for v in itertools.product(*values
 # 3 RAM Data Loading & Early Stopping
 # ================================
 class ECGDataset:
-  def __init__(self, h5_file_path, seq_len):
-      print(f"\nLoading dataset into RAM from {h5_file_path}...")
-      with h5py.File(h5_file_path, 'r') as h5f:
-          # Slice the sequence to the defined length
-          self.data = torch.tensor(h5f['rhythm_filtered'][:], dtype=torch.float32).permute(0, 2, 1)[:, :, :seq_len]
-      print(f"Dataset loaded to RAM. Shape: {self.data.shape}")
-      
-      print("Standardizing data (In-Place)...")
-      means = self.data.mean(dim=2, keepdim=True)
-      stds = self.data.std(dim=2, keepdim=True)
-      self.data -= means
-      self.data /= (stds + 1e-8)
-      
-      del means, stds
-      gc.collect()
-      print("Data standardized and ready.")
+    def __init__(self, h5_file_path, seq_len):
+        print(f"\nLoading dataset into RAM from {h5_file_path}...")
+        with h5py.File(h5_file_path, 'r') as h5f:
+            # Slice the sequence to the defined length
+            self.data = torch.tensor(h5f['rhythm_filtered'][:], dtype=torch.float32).permute(0, 2, 1)[:, :, :seq_len]
+        print(f"Dataset loaded to RAM. Shape: {self.data.shape}")
+        
+        gc.collect()
+        print("Data loaded and ready (No Normalization Applied).")
 
 class FastTensorDataLoader:
     def __init__(self, dataset, indices, batch_size, shuffle=False):
