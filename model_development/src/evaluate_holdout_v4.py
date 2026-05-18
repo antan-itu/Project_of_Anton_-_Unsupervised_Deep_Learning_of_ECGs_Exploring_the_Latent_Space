@@ -27,7 +27,6 @@ TRAIN_DATA_PATH = os.path.join(BASE_DIR, "data/MIMIC_IV_ECG_HDF5/mimic_iv_train.
 HOLDOUT_DATA_PATH = os.path.join(BASE_DIR, "data/MIMIC_IV_ECG_HDF5/mimic_iv_holdout.h5")
 CSV_PATH = os.path.join(BASE_DIR, "data/unzipped/MIMIC_IV_ECG_CSV_MICROVOLTS_v3/record_list.csv")
 
-# Add all the run directories you want to evaluate to this list
 RUN_DIRS = [
     os.path.join(BASE_DIR, "model_development/experiments/GridRun_001_2804_1735"),
     os.path.join(BASE_DIR, "model_development/experiments/GridRun_001_2904_1242"),
@@ -42,14 +41,14 @@ EXACT_TARGETS = ["ATRIAL FIBRILLATION", "Atrial fibrillation", "Atrial fibrillat
 # 2. Classes (Optimized for RAM)
 # ================================
 class BaseECGMemoryHolder:
-    """Holds the full-length raw ECG data in memory to avoid repetitive disk reads."""
+    """Holds the full-length ECG in memory to avoid repetitive disk reads."""
     def __init__(self, h5_file_path):
         print(f"Loading raw dataset into RAM from {h5_file_path}...")
         with h5py.File(h5_file_path, 'r') as h5f:
             self.raw_data = torch.tensor(h5f['rhythm_filtered'][:], dtype=torch.float32).permute(0, 2, 1)
 
 class FastTensorDataLoader:
-    """Slices and standardizes data dynamically on the GPU based on the current run's seq_len."""
+    """Slices and standardizes data dynamically on the GPU based on the run seq_len."""
     def __init__(self, base_holder, batch_size, seq_len, shuffle=False):
         self.raw_data = base_holder.raw_data
         self.seq_len = seq_len
@@ -367,11 +366,9 @@ def generate_umap_visualizations(latents, labels, h5_file_path, run_dir, file_su
 
     df_gt = pd.DataFrame(df_gt_dict)
     
-    # Filter by the holdout subset mask if one was provided
     if subset_mask is not None:
         df_gt = df_gt.iloc[subset_mask].reset_index(drop=True)
         
-    # Filter down to ONLY the points we kept during the downsampling step
     df_gt_viz = df_gt.iloc[kept_indices].copy()
         
     combined_reports = df_gt_viz[report_cols].fillna('').astype(str).agg(' '.join, axis=1)
@@ -487,17 +484,17 @@ def generate_random_reconstructions(model, raw_data, seq_len, run_dir, file_suff
     
     model.eval()
     
-    # Determine which indices we are allowed to sample from
+    # Determine which indices are allowed to sample from
     if subset_mask is not None:
         valid_indices = np.where(subset_mask)[0]
     else:
         valid_indices = np.arange(len(raw_data))
         
-    # Pick random indices from the allowed pool
+    # Pick random indices from the pool
     rng = np.random.RandomState(42)
     sample_indices = rng.choice(valid_indices, size=min(num_samples, len(valid_indices)), replace=False)
     
-    # Extract raw data for these specific indices, slice to seq_len, and move to GPU
+    # Extract data for these indices, slice to seq_len, and move to GPU
     x_batch = raw_data[sample_indices, :, :seq_len].to(DEVICE)
     
     # Standardize identically to the FastTensorDataLoader
@@ -575,7 +572,7 @@ def main():
 
     safe_mask = get_safe_holdout_mask(TRAIN_DATA_PATH, HOLDOUT_DATA_PATH, CSV_PATH)
 
-    print("\n--- Loading Raw Datasets into RAM (Persistent across all runs) ---")
+    print("\n--- Loading Datasets into RAM ---")
     train_base = BaseECGMemoryHolder(TRAIN_DATA_PATH)
     holdout_base = BaseECGMemoryHolder(HOLDOUT_DATA_PATH)
     

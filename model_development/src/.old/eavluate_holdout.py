@@ -237,7 +237,7 @@ def main():
     print("Loaded Best Model Weights.")
 
     # 3. Process Training Data for Classifier
-    print("\n--- Processing Training Set (for Classifier Fitting) ---")
+    print("\n--- Processing Training Set ---")
     train_dataset = ECGDataset(TRAIN_DATA_PATH, config['seq_len'])
     train_loader = FastTensorDataLoader(train_dataset, batch_size=config['batch_size'], shuffle=False)
     y_train = extract_afib_labels(TRAIN_DATA_PATH)

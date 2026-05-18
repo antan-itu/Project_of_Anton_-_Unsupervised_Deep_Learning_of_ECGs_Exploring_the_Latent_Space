@@ -397,7 +397,6 @@ def generate_random_reconstructions(model, dataloader, run_dir):
     
     model.eval()
     
-    # Grab a single batch from the holdout dataloader
     x_batch = next(iter(dataloader))
     
     with torch.no_grad():

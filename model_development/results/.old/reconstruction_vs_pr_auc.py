@@ -68,9 +68,8 @@ for split_name in splits:
     
     fig, ax = plt.subplots(figsize=(8, 6))
     
-    # Enforce a clear background and strict grid ordering
     sns.set_style("whitegrid")
-    ax.set_axisbelow(True) # Forces grid strictly behind all drawn elements
+    ax.set_axisbelow(True)
     ax.grid(True, which='both', linestyle='--', linewidth=0.7, alpha=0.7, color='gray')
     
     # Overlay error bars
@@ -80,7 +79,6 @@ for split_name in splits:
         capsize=4, alpha=0.6, zorder=2
     )
     
-    # Plot standard scatter with a black edge for better contrast
     sns.scatterplot(
         data=df_split, x='RMSE', y='LR_PRAUC', hue='Model', 
         s=150, palette='Set1', ax=ax, zorder=3, edgecolor='black', linewidth=1.2
@@ -90,7 +88,6 @@ for split_name in splits:
     ax.set_xlabel("Reconstruction Error (RMSE)")
     ax.set_ylabel("Clinical Utility (LogReg PR-AUC)")
     
-    # Apply the global limits to lock the axes and grid in place
     ax.set_xlim(global_x_min, global_x_max)
     ax.set_ylim(global_y_min, global_y_max)
     
@@ -98,13 +95,13 @@ for split_name in splits:
     m1_rmse = df_split[df_split['Model'] == 'M1']['RMSE'].values[0]
     m1_prauc = df_split[df_split['Model'] == 'M1']['LR_PRAUC'].values[0]
     
-    # Adjusted xytext to push the arrow slightly up and right for clarity
+    # Adjusted xytext
     ax.annotate('Baseline (M1)', 
                 xy=(m1_rmse, m1_prauc), xytext=(m1_rmse + 0.015, m1_prauc + 0.02),
                 arrowprops=dict(facecolor='black', shrink=0.05, width=1.5, headwidth=6),
                 zorder=4)
     
-    # Move legend outside the plot to prevent data obstruction
+    # Move legend outside the plot
     ax.legend(title='Model', loc='upper left', bbox_to_anchor=(1.02, 1))
     
     plt.tight_layout()
@@ -117,7 +114,7 @@ for split_name in splits:
     
     print(f"Plot successfully saved to: {save_path}")
 
-print("All grid-enabled, CI-annotated, consistent plots generated successfully.")
+print("Plots generated successfully.")
 
 import pandas as pd
 import matplotlib.pyplot as plt

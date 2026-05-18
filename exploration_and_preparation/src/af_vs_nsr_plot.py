@@ -11,7 +11,7 @@ OUTPUT_DIR = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repositor
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 def extract_shortened_ecgs():
-    print("Opening HDF5 file and scanning labels...")
+    print("Opening HDF5 file...")
     
     with h5py.File(H5_PATH, 'r') as f:
         # 1. Extract Ground Truth Labels
@@ -27,12 +27,11 @@ def extract_shortened_ecgs():
         sinus_indices = df_gt.index[sinus_mask].tolist()
         afib_indices = df_gt.index[afib_mask].tolist()
         
-        # 3. Recreate the exact random state to grab your specific targets
+        # 3. Recreate the exact random state
         np.random.seed(42) 
         chosen_sinus_indices = np.random.choice(sinus_indices, size=10, replace=False)
         chosen_afib_indices = np.random.choice(afib_indices, size=10, replace=False)
         
-        # In Python, arrays are 0-indexed, so Example 6 is index 5, and Example 5 is index 4.
         target_nsr_idx = chosen_sinus_indices[5]
         target_afib_idx = chosen_afib_indices[4]
         
@@ -47,9 +46,7 @@ def extract_shortened_ecgs():
             plt.ylabel("Amplitude (mV)", fontsize=25)
             plt.tick_params(axis='both', which='major', labelsize=20)
             
-            # --- ADDING THE COLORS ---
-            # We only want to highlight one heartbeat to avoid cluttering the plot.
-            # IMPORTANT: You must change these X-axis numbers based on your specific chosen plot!
+            # Styling
             if is_nsr:
                 # Example: Highlighting a heartbeat that occurs around the 1.0 - 1.5 second mark
                 plt.axvspan(1.07, 1.21, color='#1f77b4', alpha=0.3, label='P-Wave')       # Blue
@@ -57,7 +54,6 @@ def extract_shortened_ecgs():
                 plt.axvspan(1.50, 1.71, color='#2ca02c', alpha=0.3, label='T-Wave')       # Green
                 plt.legend(loc='upper right', fontsize=25, framealpha=1.0)
             
-            # Standard ECG grid styling
             plt.grid(which='major', color='#dddddd', linewidth=1.2)
             plt.grid(which='minor', color='#eeeeee', linewidth=0.5)
             plt.minorticks_on()
@@ -70,8 +66,8 @@ def extract_shortened_ecgs():
             plt.close()
             print(f"Saved: {full_path}")
 
-        # 5. Extract just the first 1500 steps
-        print("\nExtracting the 5-second windows...")
+        # 5. Extract the first 1500 steps
+        print("\nExtracting the 1500 step windows...")
         nsr_waveform = f['rhythm_filtered'][target_nsr_idx, :1500, 0]
         afib_waveform = f['rhythm_filtered'][target_afib_idx, :1500, 0]
         

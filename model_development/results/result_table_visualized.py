@@ -8,7 +8,7 @@ output_dir = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repositor
 # Ensure the directory exists
 os.makedirs(output_dir, exist_ok=True)
 
-# 1. Core Styling Constants
+#Styling
 labels = ['Training (T)', 'Holdout (H)', 'Clean Holdout (C)']
 x = np.arange(len(labels))
 width = 0.15
@@ -56,7 +56,6 @@ ax1.spines['right'].set_visible(True)
 ax1.legend(loc='upper center', bbox_to_anchor=(0.5, 0.98), ncol=5, fontsize=10, frameon=True)
 
 plt.tight_layout()
-# Save to your specific path
 plot1_path = os.path.join(output_dir, 'prauc_xgboost_plot.png')
 plt.savefig(plot1_path)
 plt.close(fig1)
@@ -119,7 +118,6 @@ handles, labels_leg = ax.get_legend_handles_labels()
 fig2.legend(handles, labels_leg, loc='upper center', bbox_to_anchor=(0.5, 1.05), ncol=5, fontsize=12)
 
 plt.tight_layout()
-# Save to your specific path
 plot2_path = os.path.join(output_dir, 'all_metrics_grid.png')
 plt.savefig(plot2_path, bbox_inches='tight')
 plt.close(fig2)

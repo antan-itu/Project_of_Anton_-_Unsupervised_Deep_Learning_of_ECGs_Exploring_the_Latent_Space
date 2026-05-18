@@ -52,7 +52,7 @@ with h5py.File(TRAIN_FILE_PATH, 'r') as f_train, h5py.File(HOLDOUT_FILE_PATH, 'r
 train_patients = set([study_to_subject.get(s, f"UNMAPPED_{s}") for s in train_studies])
 holdout_patients = [study_to_subject.get(s, f"UNMAPPED_{s}") for s in holdout_studies]
 
-# Create safe mask: Keep holdout subjects ONLY if they do not exist in the training set
+# Create safe mask: Keep holdout subjects if they do not exist in the training set
 safe_mask = np.array([p not in train_patients for p in holdout_patients])
 print(f"Mask generation complete. Found {np.sum(safe_mask)} clean ECGs out of {len(safe_mask)} total holdout ECGs.")
 
@@ -76,7 +76,7 @@ with h5py.File(HOLDOUT_FILE_PATH, 'r') as f:
 
 df_gt = pd.DataFrame(df_gt_dict)
 
-# Filter by the safe holdout subset mask
+# Filter by the holdout subset mask
 df_clean_gt = df_gt.iloc[safe_mask].copy().reset_index(drop=True)
 
 combined_reports = df_clean_gt[report_cols].fillna('').astype(str).agg(' '.join, axis=1)
@@ -115,7 +115,7 @@ for label_name, target_list in EXACT_LABELS.items():
 
     df_other_downsampled = df_other.sample(frac=0.30, random_state=42)
 
-    # Recombine and sort so the target class is at the bottom of the dataframe
+    # Recombine and sort so that the target class is at the bottom of the dataframe
     plot_df_clean = pd.concat([df_other_downsampled, df_target])
     plot_df_clean = plot_df_clean.sort_values(by='sort_order')
 
@@ -168,7 +168,7 @@ for label_name, target_list in EXACT_LABELS.items():
         ax.set_ylabel('Dim 2')
         ax.set_zlabel('Dim 3')
         
-        # Hide raw tick numbers for a cleaner topological view
+        # Hide raw tick numbers for a cleaner view
         ax.set_xticklabels([])
         ax.set_yticklabels([])
         ax.set_zticklabels([])
@@ -176,7 +176,7 @@ for label_name, target_list in EXACT_LABELS.items():
         # Legend
         ax.legend(handles=legend_elements, loc='upper right', title="Diagnosis")
 
-        # Rotating Camera
+        # Rotating the view
         ax.view_init(elev=30, azim=angle)
         fig.subplots_adjust(left=0.0, right=1.0, top=0.9, bottom=0.1)
 

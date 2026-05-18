@@ -27,7 +27,6 @@ TRAIN_DATA_PATH = os.path.join(BASE_DIR, "data/MIMIC_IV_ECG_HDF5/mimic_iv_train.
 HOLDOUT_DATA_PATH = os.path.join(BASE_DIR, "data/MIMIC_IV_ECG_HDF5/mimic_iv_holdout.h5")
 CSV_PATH = os.path.join(BASE_DIR, "data/unzipped/MIMIC_IV_ECG_CSV_MICROVOLTS_v3/record_list.csv")
 
-# Add all the run directories you want to evaluate to this list
 RUN_DIRS = [
     os.path.join(BASE_DIR, "model_development/experiments/GridRun_001_2804_1735")
     #os.path.join(BASE_DIR, "model_development/experiments/GridRun_001_2904_1242"),
@@ -236,10 +235,9 @@ def get_latents_and_reconstruction(model, dataloader):
     return np.concatenate(latents_list, axis=0), np.array(ss_res_list), np.array(ss_tot_list)
 
 def bootstrap_clf_ci(y_true, y_probs, metric_func, n_bootstraps=1000):
-    # 1. Exact calculation on the full array (This will match the plot)
     base_score = metric_func(y_true, y_probs)
     
-    # 2. Bootstrapping for the Confidence Interval
+    # Bootstrapping for the Confidence Interval
     scores = []
     rng = np.random.RandomState(42)
     indices = np.arange(len(y_true))
@@ -250,7 +248,7 @@ def bootstrap_clf_ci(y_true, y_probs, metric_func, n_bootstraps=1000):
             continue
         scores.append(metric_func(y_true_b, y_probs_b))
         
-    # Return the exact score, alongside the bootstrapped CI
+    # Return the score, along with the bootstrapped CI
     return f"{base_score:.3f} [{np.percentile(scores, 2.5):.3f}, {np.percentile(scores, 97.5):.3f}]"
 
 def bootstrap_recon_ci(ss_res_arr, ss_tot_arr, elements_per_sample, n_bootstraps=1000):
@@ -278,7 +276,7 @@ def bootstrap_recon_ci(ss_res_arr, ss_tot_arr, elements_per_sample, n_bootstraps
         rmse_scores.append(math.sqrt(total_res / total_elements))
         r2_scores.append(1.0 - (total_res / total_tot) if total_tot != 0 else 0.0)
         
-    # Return the exact scores, alongside the bootstrapped CIs
+    # Return the scores, along eith the bootstrapped CIs
     return (
         f"{base_rmse:.3f} [{np.percentile(rmse_scores, 2.5):.3f}, {np.percentile(rmse_scores, 97.5):.3f}]",
         f"{base_r2:.3f} [{np.percentile(r2_scores, 2.5):.3f}, {np.percentile(r2_scores, 97.5):.3f}]"
@@ -294,7 +292,6 @@ def generate_umap_visualizations(latents, labels, h5_file_path, run_dir, file_su
     if total_points > max_points:
         print(f"Downsampling from {total_points} to {max_points} points for cleaner visualization...")
         np.random.seed(42)
-        # We need the indices to map back to the original dataframe for hover text later
         original_indices = np.arange(total_points)
         sample_idx = np.random.choice(total_points, max_points, replace=False)
         
@@ -327,11 +324,9 @@ def generate_umap_visualizations(latents, labels, h5_file_path, run_dir, file_su
 
     df_gt = pd.DataFrame(df_gt_dict)
     
-    # Filter by the holdout subset mask if one was provided
     if subset_mask is not None:
         df_gt = df_gt.iloc[subset_mask].reset_index(drop=True)
         
-    # Filter down to ONLY the points we kept during the downsampling step
     df_gt_viz = df_gt.iloc[kept_indices].copy()
         
     combined_reports = df_gt_viz[report_cols].fillna('').astype(str).agg(' '.join, axis=1)
@@ -447,20 +442,16 @@ def generate_random_reconstructions(model, raw_data, seq_len, run_dir, file_suff
     
     model.eval()
     
-    # Determine which indices we are allowed to sample from
     if subset_mask is not None:
         valid_indices = np.where(subset_mask)[0]
     else:
         valid_indices = np.arange(len(raw_data))
         
-    # Pick random indices from the allowed pool
     rng = np.random.RandomState(42)
     sample_indices = rng.choice(valid_indices, size=min(num_samples, len(valid_indices)), replace=False)
     
-    # Extract raw data for these specific indices, slice to seq_len, and move to GPU
     x_batch = raw_data[sample_indices, :, :seq_len].to(DEVICE)
     
-    # Standardize identically to the FastTensorDataLoader
     means = x_batch.mean(dim=2, keepdim=True)
     stds = x_batch.std(dim=2, keepdim=True)
     x_batch = (x_batch - means) / (stds + 1e-8)
@@ -529,7 +520,7 @@ def main():
 
     safe_mask = get_safe_holdout_mask(TRAIN_DATA_PATH, HOLDOUT_DATA_PATH, CSV_PATH)
 
-    print("\n--- Loading Raw Datasets into RAM (Persistent across all runs) ---")
+    print("\n--- Loading Datasets into RAM ---")
     train_base = BaseECGMemoryHolder(TRAIN_DATA_PATH)
     holdout_base = BaseECGMemoryHolder(HOLDOUT_DATA_PATH)
     
@@ -606,7 +597,7 @@ def main():
         evaluate_subset(X_clean, y_clean, ss_res_clean, ss_tot_clean, 
                         xgb_model, lr_model, elements_per_sample, run_dir, "clean_subset", subset_mask=safe_mask)
 
-        # Flush iteration-specific arrays from GPU/RAM
+        # Clean up GPU/RAM
         del X_train, X_holdout, X_clean, holdout_ss_res, holdout_ss_tot, ss_res_clean, ss_tot_clean
         gc.collect()
         torch.cuda.empty_cache()
