@@ -1,5 +1,6 @@
 # Anton's Weekly Meetings
 
+* [21 May 2026](#date-21-may-2026)
 * [07 May 2026](#date-07-may-2026)
 * [30 April 2026](#date-30-april-2026)
 * [21 April 2026](#date-21-april-2026)
@@ -10,6 +11,96 @@
 * [19 February 2026](#date-19-february-2026)
 * [05 February 2026](#date-05-february-2026)
 * [Template](#date-template)
+
+---
+### Date: 21 May 2026
+
+#### What helped you this week?
+
+* Feedback from the report review - thank you!
+
+#### What did you achieve?
+
+* I updated the report based on the feedback from the previous meeting and the comments in the Overleaf document — it took quite some time.
+
+* Jørgen was not a fan of normalization, so I decided to check the impact: Performance improved slightly but not significantly, and normalization increased the number of epochs and doubled the training time.
+
+* Jørgen finished the manual review, and the results are included in (Any other topics below). In short MIMIC missed almost half of the ECGs with AF.
+  * I've expanded the results and discussion section based on these findings (still in progress).
+
+#### What did you struggle with?
+
+* Maintaining consistent active voice throughout the report.
+
+#### What would you like to work on next week?
+
+* Expand the discussion section.
+
+* Continue adapting active voice.
+
+* Polish the report.
+
+* Prepare the general structure of the slides for the defense before Jørgen travels to Cyprus.
+
+#### Where do you need help from Veronika?
+
+* Any thoughts on the inccorect GT results?
+
+* Most important topics to highlight during the defense?
+
+#### Any other topics
+```
+==================================================
+ BASELINE ANALYSIS: GT vs Manual Review 
+==================================================
+Total ECGs reviewed: 400
+Total AFib in Manual Review: 48                 <-- #
+Total AFib in MIMIC-IV GT: 32                       #
+------------------------------                      #
+Total number of correctly labeled ECGs?             # MIMIC caught 27 of 48 AF cases
+Count: 374                                          #
+Percentage: 93.50%                                  #
+  -> Agree on AFib (True Positives): 27         <-- #
+  -> Agree on No AFib (True Negatives): 347
+
+------------------------------
+How many were false positives (GT=1, Review=0)?
+Count: 5
+Percentage: 1.25%
+
+How many were false negatives (GT=0, Review=1)?
+Count: 21
+Percentage: 5.25%
+
+
+==================================================
+ MODEL PERFORMANCE vs MANUAL REVIEW
+==================================================
+--- XGBoost ---
+Accuracy:  0.8650 (346/400 correct)
+True Positives:  41
+True Negatives:  305
+False Positives: 47 (Model said AFib, Review said No)
+False Negatives: 7 (Model said No, Review said AFib)
+Precision: 0.4659
+Recall:    0.8542
+F1-Score:  0.6029
+ROC-AUC:   0.9423
+PR-AUC:    0.7393
+
+--- Logistic Regression ---
+Accuracy:  0.8425 (337/400 correct)
+True Positives:  42
+True Negatives:  295
+False Positives: 57 (Model said AFib, Review said No)
+False Negatives: 6 (Model said No, Review said AFib)
+Precision: 0.4242
+Recall:    0.8750
+F1-Score:  0.5714
+ROC-AUC:   0.9199
+PR-AUC:    0.4865
+``` 
+
 
 ---
 ### Date: 07 May 2026
