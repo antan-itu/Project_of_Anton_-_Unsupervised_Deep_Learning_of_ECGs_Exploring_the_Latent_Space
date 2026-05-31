@@ -39,12 +39,12 @@ def plot_clean_holdout_distribution():
         train_patients = set([study_to_subject.get(study, f"UNMAPPED_{study}") for study in train_studies])
         holdout_patients = [study_to_subject.get(study, f"UNMAPPED_{study}") for study in holdout_studies]
 
-    # --- Isolate Clean Holdout ---
+    # Isolate Clean Holdout
     print("\nFiltering for clean holdout patients (no leakage from train)...")
     # Keep only the patient IDs in the holdout set that DO NOT appear in the train set
     clean_holdout_ecgs = [p for p in holdout_patients if p not in train_patients]
     
-    # Count how many ECGs belong to each clean patient
+    # Count how many ECGs belong to each patient
     id_counts = list(collections.Counter(clean_holdout_ecgs).values())
     
     if not id_counts:

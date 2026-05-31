@@ -1,16 +1,16 @@
+### This script provides an overview of the autoencoder architecture ###
+
 import os
 import json
 import torch
 import torch.nn as nn
 import numpy as np
 
-# ================================
-# 1. Model Definition
-# ================================
-class ConvAutoencoder(nn.Module):
+### Defining the architecture from the trained model's configuration ###
+class Autoencoder(nn.Module):
     def __init__(self, seq_len, in_channels, latent_dim, base_filters, kernel_size,
                  num_layers, pool_size, activation, dropout_rate, norm_type, pooling_type, masking_ratio=0.0):
-        super(ConvAutoencoder, self).__init__()
+        super(Autoencoder, self).__init__()
         
         self.in_channels = in_channels
         self.seq_len = seq_len
@@ -106,9 +106,7 @@ class ConvAutoencoder(nn.Module):
         return out, latent
 
 
-# ================================
-# 2. Configuration & Paths
-# ================================
+### Configuration and paths ###
 RUN_DIR = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/model_development/experiments/GridRun_003_1804_1354"
 
 CONFIG_PATH = os.path.join(RUN_DIR, "config.json")
@@ -119,16 +117,14 @@ SEQ_LEN = 5000
 IN_CHANNELS = 8
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# ================================
-# 3. Load & Export Execution
-# ================================
+### Main function loding the model and export to ONNX ###
 def main():
     print(f"Loading configuration from: {CONFIG_PATH}")
     with open(CONFIG_PATH, 'r') as f:
         config = json.load(f)
 
     print("Instantiating model architecture...")
-    model = ConvAutoencoder(
+    model = Autoencoder(
         seq_len=SEQ_LEN,
         in_channels=IN_CHANNELS,
         latent_dim=config['latent_dim'],
@@ -159,8 +155,8 @@ def main():
         input_names=['ECG_Input'],   
         output_names=['Reconstruction', 'Latent_Vector'] 
     )
-    print(f"Success! ONNX model saved to: {ONNX_PATH}")
-    print("You can now drag and drop this file into netron.app in your browser.")
+    print(f"ONNX model saved to: {ONNX_PATH}")
+    print("Note: View the file at the website netron.app")
 
 if __name__ == "__main__":
     main()

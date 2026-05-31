@@ -1,3 +1,4 @@
+### The script takes the exported latent space coordinates and overlays AF labels - uses UMAP for visual exploration ###
 import os
 import numpy as np
 import pandas as pd
@@ -7,14 +8,14 @@ import umap.umap_ as umap
 import plotly.express as px
 import h5py
 
-# --- 1. SET DIRECTORIES ---
+# Set directories
 RUN_DIR = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/model_development/experiments/GridRun_005_2604_2227"
 FILE_PATH = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space/data/MIMIC_IV_ECG_HDF5/mimic_iv_train.h5"
 
 PLOT_DIR = os.path.join(RUN_DIR, "plots")
 os.makedirs(PLOT_DIR, exist_ok=True)
 
-# --- 2. DEFINE TARGET LABELS ---
+# Define the target
 EXACT_LABELS = {
     "AFib": [
         "ATRIAL FIBRILLATION",
@@ -23,11 +24,11 @@ EXACT_LABELS = {
     ],
 }
 
-# --- 3. UMAP PARAMETERS ---
+# Umap parameters
 N_NEIGHBORS = 25
 MIN_DIST = 0.01
 
-# --- 4. LOAD EXPORTED VECTORS ---
+# Load the exported latent coordinates
 print("Loading exported latent coordinates...")
 try:
     latents = np.load(os.path.join(RUN_DIR, "saved_latents.npy"))
@@ -40,37 +41,34 @@ print(f"Calculating 2D UMAP (Neighbors: {N_NEIGHBORS}, Min Dist: {MIN_DIST})..."
 reducer_2d = umap.UMAP(n_neighbors=N_NEIGHBORS, min_dist=MIN_DIST, n_components=2, random_state=42)
 umap_embeddings_2d = reducer_2d.fit_transform(latents)
 
-print("Calculating 3D UMAP Projection...")
+print("Calculating 3D UMAP...")
 reducer_3d = umap.UMAP(n_neighbors=N_NEIGHBORS, min_dist=MIN_DIST, n_components=3, random_state=42)
 umap_embeddings_3d = reducer_3d.fit_transform(latents)
 
-# --- 5. EXTRACT CLINICAL TEXT & HOVER DATA ---
+# Extracting labels with AF
 print("Extracting clinical labels from GT for validation subset...")
 
 df_gt_dict = {}
 with h5py.File(FILE_PATH, 'r') as f:
     gt_group = f['GT']
-    # Dynamically find all report columns
+    # Find all report columns
     report_cols = [key for key in gt_group.keys() if key.startswith('report_')]
-    
     for col in report_cols:
-        # Load the raw bytes and decode them into utf-8 strings
         df_gt_dict[col] = [val.decode('utf-8') for val in gt_group[col][:]]
 
-# Build the DataFrame from the decoded dictionary
+# Create dataframe with ground truth info
 df_gt = pd.DataFrame(df_gt_dict)
 
-# Extract only the samples evaluated by the model
 df_val_gt = df_gt.iloc[val_idx].copy()
 
-# Combine the text and clean up whitespace for the tooltips
+# Combine all report columns into a single string for plotly
 combined_reports = df_val_gt[report_cols].fillna('').astype(str).agg(' '.join, axis=1)
 clean_reports = combined_reports.str.strip().str.replace(r'\s+', ' ', regex=True)
 
-# Truncate first 250 characters so the hover box doesn't cover thescreen
+# Truncate the hover text - for plotly
 hover_snippets = clean_reports.str.slice(0, 250) + "..."
 
-# --- 6. LOOP THROUGH EVERY PATTERN ---
+# Loop through the labels - can be used for mutliple labels in the future
 for label_name, target_list in EXACT_LABELS.items():
     print(f"\n--- Processing Label: {label_name} ---")
     
@@ -78,18 +76,14 @@ for label_name, target_list in EXACT_LABELS.items():
 
     for col in report_cols:
         if col in df_val_gt.columns:
-            # Clean the column exactly like we did in the GT exploration script
             col_cleaned = df_val_gt[col].fillna('').astype(str).str.strip()
-            # Use strict isin() matching instead of regex contains()
             mask |= col_cleaned.isin(target_list)
     
     mask = mask.astype(int)
     label_strings = [label_name if val == 1 else 'Other' for val in mask.values]
     
-    # -------------------------------------
-    # Generate 2D PNG (Seaborn)
-    # -------------------------------------
-    print(f"Generating 2D PNG for {label_name}...")
+    # Create 2D UMAP
+    print(f"Generating 2D UMAP for {label_name}...")
     plt.figure(figsize=(10, 8))
     sns.scatterplot(
         x=umap_embeddings_2d[:, 0], 
@@ -109,9 +103,7 @@ for label_name, target_list in EXACT_LABELS.items():
     plt.savefig(save_path_2d, dpi=300)
     plt.close() 
     
-    # -------------------------------------
-    # Generate 3D HTML with Hover Tooltips (Plotly)
-    # -------------------------------------
+    # Crate interactive 3D UMAP plot with plotly
     print(f"Generating Interactive 3D HTML for {label_name}...")
     plot_df = pd.DataFrame({
         'UMAP_3D_1': umap_embeddings_3d[:, 0],
@@ -151,4 +143,4 @@ for label_name, target_list in EXACT_LABELS.items():
     print(f"Saved: {save_path_2d}")
     print(f"Saved: {save_path_3d}")
 
-print("\nAll patterns processed successfully!")
+print("\nAll plots are generated and saved.")

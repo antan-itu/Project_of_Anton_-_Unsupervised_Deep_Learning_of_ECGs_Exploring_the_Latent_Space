@@ -14,10 +14,8 @@ OUTPUT_DIR = '/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repositor
 # ECG leads: I, II, V1, V2, V3, V4, V5, V6
 INDEPENDENT_LEAD_INDICES = [0, 1, 6, 7, 8, 9, 10, 11]
 
+# The function runsparallel across multiple CPU cores.
 def read_csv_worker(row_dict):
-    """
-    The function runsparallel across multiple CPU cores.
-    """
     file_id = str(row_dict['path']).split('/')[-1]
     csv_path = os.path.join(BASE_DIR, 'files', f"{file_id}.csv")
     

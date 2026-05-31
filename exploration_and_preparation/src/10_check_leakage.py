@@ -59,9 +59,8 @@ def check_true_patient_leakage():
         overlap_count = len(overlap)
         patient_leakage_percentage = (overlap_count / total_unique_patients) * 100 if total_unique_patients > 0 else 0
         
-        # ECG-Level Math (The Contamination Count)
+        # ECG-Level
         # We count how many individual ECGs belong to the patients in the 'overlap' set.
-        # Converting overlap to a set for O(1) lookup speed during the loop.
         overlap_set = set(overlap) 
         
         leaked_ecgs_train = sum(1 for p in train_patients if p in overlap_set)

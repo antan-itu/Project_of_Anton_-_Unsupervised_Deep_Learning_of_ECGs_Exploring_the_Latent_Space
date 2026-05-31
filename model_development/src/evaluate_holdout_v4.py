@@ -1,3 +1,4 @@
+### This script is used for evaluation of the holdout set ###
 import os
 import json
 import math
@@ -6,7 +7,6 @@ import torch.nn as nn
 import numpy as np
 import pandas as pd
 import h5py
-import gc
 import xgboost as xgb
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -14,11 +14,9 @@ import umap.umap_ as umap
 import plotly.express as px
 from sklearn.linear_model import LogisticRegression
 from sklearn.utils import resample
-from sklearn.metrics import accuracy_score, roc_auc_score, average_precision_score, roc_curve, precision_recall_curve
+from sklearn.metrics import roc_auc_score, average_precision_score, roc_curve, precision_recall_curve
 
-# ================================
-# 1. Configuration & Paths
-# ================================
+### Configuration and paths ###
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {DEVICE}")
 
@@ -37,18 +35,14 @@ RUN_DIRS = [
 
 EXACT_TARGETS = ["ATRIAL FIBRILLATION", "Atrial fibrillation", "Atrial fibrillation."]
 
-# ================================
-# 2. Classes (Optimized for RAM)
-# ================================
-class BaseECGMemoryHolder:
-    """Holds the full-length ECG in memory to avoid repetitive disk reads."""
+### Copied from the training script ###
+class MIMICHoldout:
     def __init__(self, h5_file_path):
-        print(f"Loading raw dataset into RAM from {h5_file_path}...")
+        print(f"Loading holdout set from {h5_file_path}...")
         with h5py.File(h5_file_path, 'r') as h5f:
             self.raw_data = torch.tensor(h5f['rhythm_filtered'][:], dtype=torch.float32).permute(0, 2, 1)
 
-class FastTensorDataLoader:
-    """Slices and standardizes data dynamically on the GPU based on the run seq_len."""
+class DataLoader:
     def __init__(self, base_holder, batch_size, seq_len, shuffle=False):
         self.raw_data = base_holder.raw_data
         self.seq_len = seq_len
@@ -71,10 +65,8 @@ class FastTensorDataLoader:
         end = min(start + self.batch_size, len(self.indices))
         batch_idx = self.indices[start:end]
         
-        # 1. Slice to current model's seq_len and move to GPU
         x_batch = self.raw_data[batch_idx, :, :self.seq_len].to(DEVICE)
         
-        # 2. Standardize On-the-Fly (Per-sample, per-channel along the temporal axis)
         means = x_batch.mean(dim=2, keepdim=True)
         stds = x_batch.std(dim=2, keepdim=True)
         x_batch = (x_batch - means) / (stds + 1e-8)
@@ -82,10 +74,10 @@ class FastTensorDataLoader:
         self.current_batch += 1
         return x_batch
 
-class ConvAutoencoder(nn.Module):
+class Autoencoder(nn.Module):
     def __init__(self, seq_len, in_channels, latent_dim, base_filters, kernel_size,
                  num_layers, pool_size, activation, dropout_rate, norm_type, pooling_type, masking_ratio=0.0):
-        super(ConvAutoencoder, self).__init__()
+        super(Autoencoder, self).__init__()
         
         self.in_channels = in_channels
         self.seq_len = seq_len
@@ -180,11 +172,9 @@ class ConvAutoencoder(nn.Module):
         out = self.final_conv(decoded)
         return out, latent
 
-# ================================
-# 3. Helper Functions
-# ================================
+### Preparing a clean holdout set ###
 def get_safe_holdout_mask(train_h5_path, holdout_h5_path, csv_path):
-    print("Generating pure holdout subset mask via record_list.csv...")
+    print("Generating clean holdout mask using record_list.csv...")
     df_records = pd.read_csv(csv_path)
     study_to_subject = dict(zip(df_records['study_id'].astype(str), df_records['subject_id'].astype(str)))
     
@@ -196,10 +186,11 @@ def get_safe_holdout_mask(train_h5_path, holdout_h5_path, csv_path):
     holdout_patients = [study_to_subject.get(s, f"UNMAPPED_{s}") for s in holdout_studies]
     
     safe_mask = np.array([p not in train_patients for p in holdout_patients])
-    print(f"Mask generation complete. Found {np.sum(safe_mask)} clean ECGs out of {len(safe_mask)} total.")
+    print(f"Found {np.sum(safe_mask)} clean ECGs out of {len(safe_mask)} total.")
     return safe_mask
 
-def extract_afib_labels(h5_file_path):
+### Function for label extraction ###
+def extract_af_labels(h5_file_path):
     df_gt_dict = {}
     with h5py.File(h5_file_path, 'r') as f:
         gt_group = f['GT']
@@ -234,6 +225,7 @@ def get_latents_and_reconstruction(model, dataloader):
 
     return np.concatenate(latents_list, axis=0), np.array(ss_res_list), np.array(ss_tot_list)
 
+### Bootstrapping functions used to calculate confidence intervals and P-values ###
 def bootstrap_clf_ci(y_true, y_probs, metric_func, baseline_probs=None, n_bootstraps=1000):
     base_score = metric_func(y_true, y_probs)
     
@@ -270,9 +262,9 @@ def bootstrap_clf_ci(y_true, y_probs, metric_func, baseline_probs=None, n_bootst
     return ci_str
 
 def bootstrap_recon_ci(ss_res_arr, ss_tot_arr, elements_per_sample, baseline_res=None, baseline_tot=None, n_bootstraps=1000):
-    base_total_res = np.sum(ss_res_arr)
-    base_total_tot = np.sum(ss_tot_arr)
-    base_total_elements = len(ss_res_arr) * elements_per_sample
+    base_total_res = np.sum(ss_res_arr) # Total residual sum of squares
+    base_total_tot = np.sum(ss_tot_arr) # Total total sum of squares
+    base_total_elements = len(ss_res_arr) * elements_per_sample # Total number of elements
     
     base_rmse = math.sqrt(base_total_res / base_total_elements)
     base_r2 = 1.0 - (base_total_res / base_total_tot) if base_total_tot != 0 else 0.0
@@ -283,6 +275,7 @@ def bootstrap_recon_ci(ss_res_arr, ss_tot_arr, elements_per_sample, baseline_res
     rng = np.random.RandomState(42)
     indices = np.arange(len(ss_res_arr))
     
+    # For each bootstrap iteration - we calculate metrics the metrics store the differences for P-value calculation and confidence intervals
     for _ in range(n_bootstraps):
         sample_idx = resample(indices, random_state=rng)
         b_ss_res, b_ss_tot = ss_res_arr[sample_idx], ss_tot_arr[sample_idx]
@@ -323,17 +316,17 @@ def bootstrap_recon_ci(ss_res_arr, ss_tot_arr, elements_per_sample, baseline_res
 
     return rmse_ci, r2_ci
 
+### Visualizing the latent space ###
 def generate_umap_visualizations(latents, labels, h5_file_path, run_dir, file_suffix, subset_mask=None, max_points=5000):
     print(f"\n--- Generating UMAP Visualizations ({file_suffix}) ---")
     plot_dir = os.path.join(run_dir, "holdout_plots")
     os.makedirs(plot_dir, exist_ok=True)
     
-    # --- 1. DOWNSAMPLING ---
+    # Downsample - for better visualization and to avoid overplotting
     total_points = len(latents)
     if total_points > max_points:
         print(f"Downsampling from {total_points} to {max_points} points for cleaner visualization...")
         np.random.seed(42)
-        # We need the indices to map back to the original dataframe for hover text later
         original_indices = np.arange(total_points)
         sample_idx = np.random.choice(total_points, max_points, replace=False)
         
@@ -345,7 +338,7 @@ def generate_umap_visualizations(latents, labels, h5_file_path, run_dir, file_su
         labels_viz = labels
         kept_indices = np.arange(total_points)
 
-    # --- 2. UMAP COMPUTATION ---
+    # UMAP projection
     n_neighbors = 25
     min_dist = 0.01
 
@@ -356,7 +349,7 @@ def generate_umap_visualizations(latents, labels, h5_file_path, run_dir, file_su
     reducer_3d = umap.UMAP(n_neighbors=n_neighbors, min_dist=min_dist, n_components=3, random_state=42)
     umap_3d = reducer_3d.fit_transform(latents_viz)
 
-    # --- 3. CLINICAL TEXT EXTRACTION ---
+    # Extracting report labels for plotly
     df_gt_dict = {}
     with h5py.File(h5_file_path, 'r') as f:
         gt_group = f['GT']
@@ -378,7 +371,7 @@ def generate_umap_visualizations(latents, labels, h5_file_path, run_dir, file_su
 
     label_strings = ['AFib' if val == 1 else 'Other' for val in labels_viz]
 
-    # --- 4. PREPARE DATAFRAME FOR Z-ORDER SORTING ---
+    # Preparing dataframes for plotting
     plot_df = pd.DataFrame({
         'UMAP_2D_1': umap_2d[:, 0],
         'UMAP_2D_2': umap_2d[:, 1],
@@ -389,11 +382,10 @@ def generate_umap_visualizations(latents, labels, h5_file_path, run_dir, file_su
         'Report_Snippet': hover_snippets
     })
 
-    # Sort so 'Other' is at the top of the dataframe (drawn first), and 'AFib' is at the bottom (drawn last)
     plot_df = plot_df.sort_values(by='Diagnosis', ascending=False)
 
-    # --- 5. GENERATE 2D PNG ---
-    print("Saving 2D Scatter Plot...")
+    # 2D UMAP Plot
+    print("Saving 2D Plot...")
     plt.figure(figsize=(10, 8))
     sns.scatterplot(
         data=plot_df,
@@ -412,8 +404,8 @@ def generate_umap_visualizations(latents, labels, h5_file_path, run_dir, file_su
     plt.savefig(os.path.join(plot_dir, f"holdout_afib_umap_2d_{file_suffix}.png"), dpi=300)
     plt.close()
 
-    # --- 6. GENERATE 3D HTML ---
-    print("Saving 3D Interactive Plot...")
+    # 3D UMAP plot using plotly
+    print("Saving 3D Plot...")
     fig_3d = px.scatter_3d(
         plot_df, 
         x='UMAP_3D_1', 
@@ -429,6 +421,7 @@ def generate_umap_visualizations(latents, labels, h5_file_path, run_dir, file_su
     fig_3d.update_layout(scene=dict(xaxis=dict(showbackground=False), yaxis=dict(showbackground=False), zaxis=dict(showbackground=False)))
     fig_3d.write_html(os.path.join(plot_dir, f"holdout_afib_umap_3d_{file_suffix}.html"))
 
+### Plotting classification curves ###
 def generate_classification_curves(y_true, xgb_probs, lr_probs, run_dir, file_suffix):
     print(f"\n--- Generating ROC and PR Curves ({file_suffix}) ---")
     plot_dir = os.path.join(run_dir, "holdout_plots")
@@ -477,6 +470,7 @@ def generate_classification_curves(y_true, xgb_probs, lr_probs, run_dir, file_su
     plt.savefig(os.path.join(plot_dir, f"holdout_pr_curve_{file_suffix}.png"), dpi=300)
     plt.close()
 
+### Plotting random reconstructions ###
 def generate_random_reconstructions(model, raw_data, seq_len, run_dir, file_suffix, subset_mask=None, num_samples=10):
     print(f"\n--- Generating Random Reconstructions Plot ({file_suffix}) ---")
     plot_dir = os.path.join(run_dir, "holdout_plots")
@@ -484,20 +478,16 @@ def generate_random_reconstructions(model, raw_data, seq_len, run_dir, file_suff
     
     model.eval()
     
-    # Determine which indices are allowed to sample from
     if subset_mask is not None:
         valid_indices = np.where(subset_mask)[0]
     else:
         valid_indices = np.arange(len(raw_data))
         
-    # Pick random indices from the pool
     rng = np.random.RandomState(42)
     sample_indices = rng.choice(valid_indices, size=min(num_samples, len(valid_indices)), replace=False)
     
-    # Extract data for these indices, slice to seq_len, and move to GPU
     x_batch = raw_data[sample_indices, :, :seq_len].to(DEVICE)
     
-    # Standardize identically to the FastTensorDataLoader
     means = x_batch.mean(dim=2, keepdim=True)
     stds = x_batch.std(dim=2, keepdim=True)
     x_batch = (x_batch - means) / (stds + 1e-8)
@@ -505,7 +495,6 @@ def generate_random_reconstructions(model, raw_data, seq_len, run_dir, file_suff
     with torch.no_grad():
         reconstructed, _ = model(x_batch)
     
-    # Permute to (Batch, Seq_Len, Channels) for easier plotting
     x_batch_np = x_batch.permute(0, 2, 1).cpu().numpy()
     reconstructed_np = reconstructed.permute(0, 2, 1).cpu().numpy()
     
@@ -513,7 +502,7 @@ def generate_random_reconstructions(model, raw_data, seq_len, run_dir, file_suff
     axes = axes.flatten()
     
     for i in range(len(sample_indices)):
-        # Plotting Channel 0 (Lead I)
+        # Plotting Lead I from the original and reconstructed ECG
         axes[i].plot(x_batch_np[i, :, 0], label="Original (Lead I)", alpha=0.7)
         axes[i].plot(reconstructed_np[i, :, 0], label="Reconstruction", color='red', linestyle='--')
         axes[i].set_title(f"Holdout ECG ({file_suffix}) - Original Index: {sample_indices[i]}")
@@ -526,9 +515,7 @@ def generate_random_reconstructions(model, raw_data, seq_len, run_dir, file_suff
     
     print(f"Saved: {save_path}")
 
-# ================================
-# 4. Evaluation Module
-# ================================
+### Evaluation function used for the entire holdout and clean subset ###
 def evaluate_subset(X_subset, y_subset, ss_res_subset, ss_tot_subset, xgb_model, lr_model, elements_per_sample, run_dir, file_suffix, subset_mask=None, baseline_dict=None):
     print(f"\nEvaluating subset: {file_suffix.upper()} (N={len(y_subset)})")
     
@@ -547,38 +534,32 @@ def evaluate_subset(X_subset, y_subset, ss_res_subset, ss_tot_subset, xgb_model,
     lr_auc_str = bootstrap_clf_ci(y_subset, lr_probs, roc_auc_score, b_lr)
     lr_prauc_str = bootstrap_clf_ci(y_subset, lr_probs, average_precision_score, b_lr)
 
-    print(f"--- RESULTS: {file_suffix.upper()} ---")
-    print(f"  RMSE:           {rmse_str}")
-    print(f"  R2:             {r2_str}")
-    print(f"  XGBoost AUC:    {xgb_auc_str}")
-    print(f"  XGBoost PR-AUC: {xgb_prauc_str}")
-    print(f"  LogReg AUC:     {lr_auc_str}")
-    print(f"  LogReg PR-AUC:  {lr_prauc_str}")
-
+    print(f"--- Results: {file_suffix.upper()} ---")
+    print(f"    RMSE:           {rmse_str}")
+    print(f"    R2:             {r2_str}")
+    print(f"    XGBoost AUC:    {xgb_auc_str}")
+    print(f"    XGBoost PR-AUC: {xgb_prauc_str}")
+    print(f"    LogReg AUC:     {lr_auc_str}")
+    print(f"    LogReg PR-AUC:  {lr_prauc_str}")
+  
     generate_umap_visualizations(X_subset, y_subset, HOLDOUT_DATA_PATH, run_dir, file_suffix, subset_mask)
     generate_classification_curves(y_subset, xgb_probs, lr_probs, run_dir, file_suffix)
 
-# ================================
-# 5. Main Execution
-# ================================
+### Evaluation script for the selected runs on the full holdout set and the clean subset ###
 def main():
     print("\n" + "="*60)
-    print(" BATCH HOLDOUT EVALUATION PIPELINE ")
+    print(" Evaulating Models on Holdout Set")
     print("="*60)
-
-    if not RUN_DIRS:
-        print("No run directories specified. Exiting.")
-        return
 
     safe_mask = get_safe_holdout_mask(TRAIN_DATA_PATH, HOLDOUT_DATA_PATH, CSV_PATH)
 
-    print("\n--- Loading Datasets into RAM ---")
-    train_base = BaseECGMemoryHolder(TRAIN_DATA_PATH)
-    holdout_base = BaseECGMemoryHolder(HOLDOUT_DATA_PATH)
+    print("\n--- Loading Datasets ---")
+    train_base = MIMICHoldout(TRAIN_DATA_PATH)
+    holdout_base = MIMICHoldout(HOLDOUT_DATA_PATH)
     
-    print("Extracting Clinical Labels...")
-    y_train = extract_afib_labels(TRAIN_DATA_PATH)
-    y_holdout = extract_afib_labels(HOLDOUT_DATA_PATH)
+    print("Extracting labels...")
+    y_train = extract_af_labels(TRAIN_DATA_PATH)
+    y_holdout = extract_af_labels(HOLDOUT_DATA_PATH)
 
     baseline_cache = {
         "full_holdout": None,
@@ -589,7 +570,7 @@ def main():
 
     for run_dir in RUN_DIRS:
         print("\n\n" + "#"*60)
-        print(f" EVALUATING RUN: {os.path.basename(run_dir)}")
+        print(f" Evaluating run: {os.path.basename(run_dir)}")
         print("#"*60)
         
         config_path = os.path.join(run_dir, "config.json")
@@ -602,9 +583,10 @@ def main():
         with open(config_path, "r") as f:
             config = json.load(f)
 
+        # Preparing for variable sequence - default is 5000
         current_seq_len = config.get('seq_len', 5000)
 
-        model = ConvAutoencoder(
+        model = Autoencoder(
             seq_len=current_seq_len, in_channels=8, latent_dim=config['latent_dim'], 
             base_filters=config['base_filters'], kernel_size=config['kernel_size'],
             num_layers=config['num_layers'], pool_size=config['pool_size'], 
@@ -613,11 +595,11 @@ def main():
         ).to(DEVICE)
         model.load_state_dict(torch.load(model_weights_path, map_location=DEVICE))
 
-        print(f"\n--- Processing Training Set (seq_len={current_seq_len}) ---")
-        train_loader = FastTensorDataLoader(train_base, batch_size=config['batch_size'], seq_len=current_seq_len, shuffle=False)
+        print(f"\n--- Processing training (seq_len={current_seq_len}) ---")
+        train_loader = DataLoader(train_base, batch_size=config['batch_size'], seq_len=current_seq_len, shuffle=False)
         X_train, _, _ = get_latents_and_reconstruction(model, train_loader)
         
-        print("Training Final Classifiers...")
+        print("Training classifiers...")
         num_pos = sum(y_train)
         scale_pos_weight = (len(y_train) - num_pos) / num_pos if num_pos > 0 else 1.0
         
@@ -632,14 +614,14 @@ def main():
         lr_model.fit(X_train, y_train)
 
         print("\n--- Processing Holdout Set ---")
-        holdout_loader = FastTensorDataLoader(holdout_base, batch_size=config['batch_size'], seq_len=current_seq_len, shuffle=False)
+        holdout_loader = DataLoader(holdout_base, batch_size=config['batch_size'], seq_len=current_seq_len, shuffle=False)
         
-        # Calculate latents for the entire holdout set
+        # Calculate latents 
         X_holdout, holdout_ss_res, holdout_ss_tot = get_latents_and_reconstruction(model, holdout_loader)
         
         elements_per_sample = current_seq_len * 8
 
-        # --- EVALUATION 1: Full Holdout ---
+        # --- Full Holdout ---
         xgb_probs_full = xgb_model.predict_proba(X_holdout)[:, 1]
         lr_probs_full = lr_model.predict_proba(X_holdout)[:, 1]
         
@@ -654,7 +636,7 @@ def main():
                         xgb_model, lr_model, elements_per_sample, run_dir, "full_holdout", 
                         baseline_dict=None if is_first_model else baseline_cache["full_holdout"])
                         
-        # --- EVALUATION 2: Clean Subset ---
+        # --- Clean Subset ---
         X_clean = X_holdout[safe_mask]
         y_clean = y_holdout[safe_mask]
         ss_res_clean = holdout_ss_res[safe_mask]

@@ -46,7 +46,7 @@ def preprocess_and_clean_dataset():
         for i in range(0, total_ecgs, CHUNK_SIZE):
             end_idx = min(i + CHUNK_SIZE, total_ecgs)
             
-            # Read chunk into RAM
+            # Read chunk
             chunk = dset_in[i:end_idx]
             
             # Calculate flatlines: Peak-to-Peak == 0.0 along the time axis

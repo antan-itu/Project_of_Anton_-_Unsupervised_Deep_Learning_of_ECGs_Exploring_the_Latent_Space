@@ -7,11 +7,9 @@ BASE_DIR = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/
 DATA_PATH = os.path.join(BASE_DIR, "data/MIMIC_IV_ECG_HDF5/mimic_iv_holdout.h5")
 REVIEW_DIR = os.path.join(BASE_DIR, "exploration_and_preparation/logs/manual_review_400_ecgs")
 
-# Input and Output CSV paths
 INPUT_CSV = os.path.join(REVIEW_DIR, "manual_afib_review_csv.csv")
 OUTPUT_CSV = os.path.join(REVIEW_DIR, "ground_truth_afib_review.csv")
 
-# --- 2. HELPER FUNCTION ---
 EXACT_TARGETS = ["ATRIAL FIBRILLATION", "Atrial fibrillation", "Atrial fibrillation."]
 
 def extract_afib_labels(h5_file_path):

@@ -1,8 +1,5 @@
-# ================================
-# 1 Imports & Global Config
-# ================================
-import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+### This script is used for a side experiment to test how much training data is needed to achieve good reconstruction performance ###
+import os 
 import random
 import numpy as np
 import matplotlib.pyplot as plt
@@ -26,13 +23,9 @@ torch.backends.cudnn.deterministic = True
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {DEVICE}")
 
-# ================================
-# 2 Model 1 Hyperparameters
-# ================================
+# Setting the hyperparameters
 SEQ_LEN = 5000
 IN_CHANNELS = 8
-
-# Locked Parameters
 LATENT_DIM = 512
 LR = 0.0005
 BASE_FILTERS = 32
@@ -47,28 +40,26 @@ BATCH_SIZE = 128
 LOSS_FUNC = 'huber'
 MASKING_RATIO = 0.0 
 
-# The sizes of training data we want to test
+# The sizes of training data to test
 TRAIN_SIZES = [50000, 30000, 15000, 6000, 3000, 2000, 1300, 800, 600, 450, 350, 200, 100, 50] 
 VAL_SIZE = 1000
 
-# Paths (Network Drive)
+# Paths
 BASE_DIR = "/home/akokholm/mnt/SUN-BMI-EC-AKOKHOLM/Master-BMI/GitHub_Repository/Project_of_Anton_-_Unsupervised_Deep_Learning_of_ECGs_Exploring_the_Latent_Space"
 OUTPUT_DIR = os.path.join(BASE_DIR, "model_development/how_much_data_is_enough")
 H5_DATA_PATH = os.path.join(BASE_DIR, "data/MIMIC_IV_ECG_HDF5/mimic_iv_train.h5")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# ================================
-# 3 Data Loading & Utilities
-# ================================
-class ECGDataset:
+# Class for loading the dataset
+class MIMIC:
     def __init__(self, h5_file_path, seq_len):
         print(f"Loading dataset into RAM from {h5_file_path}...")
         with h5py.File(h5_file_path, 'r') as h5f:
             self.data = torch.tensor(h5f['rhythm_filtered'][:], dtype=torch.float32).permute(0, 2, 1)[:, :, :seq_len]
-        print(f"Dataset loaded to RAM. Shape: {self.data.shape}")
+        print(f"Dataset loaded - Shape: {self.data.shape}")
         
-        print("Standardizing data (In-Place)...")
+        print("Standardizing data...")
         means = self.data.mean(dim=2, keepdim=True)
         stds = self.data.std(dim=2, keepdim=True)
         self.data -= means
@@ -76,9 +67,9 @@ class ECGDataset:
         
         del means, stds
         gc.collect()
-        print("Data standardized and ready.")
+        print("Data standardized")
 
-class FastTensorDataLoader:
+class DataLoader:
     def __init__(self, dataset, indices, batch_size, shuffle=False):
         self.dataset = dataset
         self.indices = torch.tensor(indices, dtype=torch.long)
@@ -134,7 +125,7 @@ class EarlyStopping:
             self.best_model_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
             self.counter = 0
 
-def evaluate_overall_performance(model, dataloader, eval_batches, prefix=""):
+def reconstruction_performance(model, dataloader, eval_batches, prefix=""):
     model.eval()
     total_ss_res, total_ss_tot, total_abs_err, total_elements = 0.0, 0.0, 0.0, 0
     with torch.no_grad():
@@ -156,9 +147,7 @@ def evaluate_overall_performance(model, dataloader, eval_batches, prefix=""):
     return {f"{prefix}MSE": round(mse, 3), f"{prefix}RMSE": round(rmse, 3), 
             f"{prefix}MAE": round(mae, 3), f"{prefix}R2": round(r2, 3)}
 
-# ================================
-# 4 PyTorch Autoencoder Model
-# ================================
+# The autoencoder class
 class ConvAutoencoder(nn.Module):
     def __init__(self, seq_len, in_channels, latent_dim, base_filters, kernel_size,
                  num_layers, pool_size, activation, dropout_rate, norm_type, pooling_type, masking_ratio=0.0):
@@ -258,34 +247,30 @@ class ConvAutoencoder(nn.Module):
         return out, latent
 
 
-# ================================
-# 5 The Experiment Execution
-# ================================
+# Executing the experiment
 print("\n" + "="*50)
-print("STARTING LEARNING CURVE EXPERIMENT")
+print("Loarding the dataset and preparing for training...")
 print("="*50)
 
-full_dataset = ECGDataset(h5_file_path=H5_DATA_PATH, seq_len=SEQ_LEN)
+full_dataset = MIMIC(h5_file_path=H5_DATA_PATH, seq_len=SEQ_LEN)
 TOTAL_AVAILABLE = len(full_dataset.data)
 
-# Shuffle all available indices securely
 all_indices = np.random.permutation(TOTAL_AVAILABLE)
 
-# 1. Isolate the Global Validation Set (Strictly 1,000 samples)
+# Global validation set (set to 1,000 samples)
 val_indices = all_indices[:VAL_SIZE]
-val_loader = FastTensorDataLoader(full_dataset, val_indices, BATCH_SIZE, shuffle=False)
+val_loader = DataLoader(full_dataset, val_indices, BATCH_SIZE, shuffle=False)
 
-# 2. Define the remaining as the Training Pool
 train_pool = all_indices[VAL_SIZE:]
 
 results_list = []
 
 for size in TRAIN_SIZES:
-    print(f"\n>>> Training with {size} ECGs... (Validating on fixed {VAL_SIZE} ECGs)")
+    print(f"\n>Training with {size} ECGs...")
     
     current_batch_size = min(BATCH_SIZE, size)
     current_train_idx = train_pool[:size]
-    train_loader = FastTensorDataLoader(full_dataset, current_train_idx, current_batch_size, shuffle=True)
+    train_loader = DataLoader(full_dataset, current_train_idx, current_batch_size, shuffle=True)
     
     model = ConvAutoencoder(
         SEQ_LEN, IN_CHANNELS, LATENT_DIM, BASE_FILTERS, KERNEL_SIZE, 
@@ -314,7 +299,7 @@ for size in TRAIN_SIZES:
             
         train_loss = running_loss / len(train_loader)
             
-        # Eval
+        # Evaluate using the validation set
         model.eval()
         val_loss = 0.0
         with torch.no_grad():
@@ -337,8 +322,7 @@ for size in TRAIN_SIZES:
             model.load_state_dict(early_stopper.best_model_state)
             break
             
-    # Calculate final scores over the entire validation loader
-    eval_metrics = evaluate_overall_performance(model, val_loader, eval_batches=len(val_loader), prefix="")
+    eval_metrics = reconstruction_performance(model, val_loader, eval_batches=len(val_loader), prefix="")
     val_rmse = eval_metrics["RMSE"]
     val_r2 = eval_metrics["R2"]
     print(f"    Final Val RMSE: {val_rmse:.3f} | Final Val R2: {val_r2:.3f}")
@@ -349,7 +333,7 @@ for size in TRAIN_SIZES:
         "Val_R2": val_r2
     })
     
-    # Plot the Loss Curve for this size
+    # Plot the loss curve for each size
     plt.figure(figsize=(8, 5))
     epochs_range = range(1, len(history['train_loss']) + 1)
     plt.plot(epochs_range, history['train_loss'], label='Train Loss', color='blue', linewidth=2)
@@ -363,30 +347,38 @@ for size in TRAIN_SIZES:
     plt.savefig(os.path.join(OUTPUT_DIR, f"loss_curve_size_{size}.png"))
     plt.close()
 
-# ================================
-# 6 Plotting the Learning Curve
-# ================================
+# Plotting the learning curve
 df_results = pd.DataFrame(results_list)
 df_results.to_csv(os.path.join(OUTPUT_DIR, "learning_curve_results.csv"), index=False)
 
-fig, ax1 = plt.subplots(figsize=(10, 6))
+fig, ax1 = plt.subplots(figsize=(8, 6))
 
-ax1.set_xlabel('Number of Training ECGs', fontsize=14)
-ax1.set_ylabel('Validation R2', color='tab:blue', fontsize=14)
-ax1.plot(df_results['Train_Size'], df_results['Val_R2'], marker='o', color='tab:blue', linewidth=2, label='Val R2')
+color_r2 = '#1F77B4'
+color_rmse = '#4B8B3B'
+
+ax1.set_xlabel('Number of Training ECGs', fontsize=15)
+ax1.set_ylabel('Validation R2', color=color_r2, fontsize=15)
+line1 = ax1.plot(df_results['Train_Size'], df_results['Val_R2'], marker='o', color=color_r2, linewidth=2.5, label='Val R2')
 ax1.tick_params(axis='x', labelsize=12)
-ax1.tick_params(axis='y', labelcolor='tab:blue', labelsize=12)
+ax1.tick_params(axis='y', labelcolor=color_r2, labelsize=12)
 
-ax2 = ax1.twinx()  
-ax2.set_ylabel('Validation RMSE', color='tab:red', fontsize=14)  
-ax2.plot(df_results['Train_Size'], df_results['Val_RMSE'], marker='s', color='tab:red', linewidth=2, linestyle='dashed', label='Val RMSE')
-ax2.tick_params(axis='y', labelcolor='tab:red', labelsize=12)
+ax2 = ax1.twinx() 
+ax2.set_ylabel('Validation RMSE', color=color_rmse, fontsize=15) 
+line2 = ax2.plot(df_results['Train_Size'], df_results['Val_RMSE'], marker='s', color=color_rmse, linewidth=2.5, linestyle='dashed', label='Val RMSE')
+ax2.tick_params(axis='y', labelcolor=color_rmse, labelsize=12)
 
-plt.xscale('log') 
-plt.xticks(TRAIN_SIZES, labels=[str(s) for s in TRAIN_SIZES], fontsize=12)
+ax1.set_xscale('log')
+ax1.set_xticks(TRAIN_SIZES)
+ax1.set_xticklabels([str(s) for s in TRAIN_SIZES], rotation=45, fontsize=12)
 
-plt.title('Model Performance vs. Training Set Size', fontsize=16)
-fig.tight_layout()  
-plt.grid(True, alpha=0.3)
-plt.savefig(os.path.join(OUTPUT_DIR, "learning_curve.png"))
-print(f"\nExperiment Complete! Plot saved to {OUTPUT_DIR}/learning_curve.png")
+plt.title('Reconstruction Performance vs. Training Size', fontsize=17)
+
+lines = line1 + line2
+labels = [l.get_label() for l in lines]
+ax1.legend(lines, labels, loc='center right', fontsize=12)
+
+ax1.grid(True, alpha=0.3, linestyle='--', zorder=0)
+
+fig.tight_layout() 
+plt.savefig(os.path.join(OUTPUT_DIR, "learning_curve.png"), dpi=300)
+print(f"\nExperiment complete - Plot saved to {OUTPUT_DIR}/learning_curve.png")
